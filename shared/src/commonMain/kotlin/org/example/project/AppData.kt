@@ -2,13 +2,13 @@ package org.example.project
 
 import org.example.project.db.Database
 
-internal enum class ClientStatus(val label: String) {
+enum class ClientStatus(val label: String) {
     Active("Active"),
     Inactive("Inactive"),
     Blacklisted("Blacklisted"),
 }
 
-internal data class Client(
+data class Client(
     val id: Int,
     val name: String,
     val birthdate: String,
@@ -21,13 +21,13 @@ internal data class Client(
     val archived: Boolean = false,
 )
 
-internal enum class PaymentFrequency(val label: String, val periodsPerYear: Int) {
+enum class PaymentFrequency(val label: String, val periodsPerYear: Int) {
     Weekly("Weekly", 52),
     SemiMonthly("Semi-monthly", 24),
     Monthly("Monthly", 12),
 }
 
-internal enum class LoanStatus(val label: String) {
+enum class LoanStatus(val label: String) {
     Pending("Pending"),
     Approved("Approved"),
     Released("Released"),
@@ -37,12 +37,12 @@ internal enum class LoanStatus(val label: String) {
     Cancelled("Cancelled"),
 }
 
-internal enum class PenaltyMode(val label: String) {
+enum class PenaltyMode(val label: String) {
     Flat("Flat amount per overdue installment"),
     Percentage("Percentage of unpaid installment"),
 }
 
-internal data class PenaltyRule(val mode: PenaltyMode, val rate: Double)
+data class PenaltyRule(val mode: PenaltyMode, val rate: Double)
 
 internal fun <T> Database.readEntities(section: String, decode: (Int, String) -> T): List<T> =
     appDataQueries.readSection(section).executeAsList().map { decode(it.id.toInt(), it.payload) }
@@ -116,7 +116,7 @@ internal fun decodePayment(id: Int, payload: String): Payment {
         fields[6].toDouble(), fields[7].toDouble(), fields[8].toDouble(), fields[9].toDouble())
 }
 
-internal data class Loan(
+data class Loan(
     val id: Int,
     val clientId: Int,
     val principal: Double,
@@ -133,7 +133,7 @@ internal data class Loan(
     val penaltyRule: PenaltyRule? = null,
 )
 
-internal data class Payment(
+data class Payment(
     val id: Int,
     val loanId: Int,
     val amount: Double,
@@ -147,10 +147,10 @@ internal data class Payment(
     val unappliedAmount: Double = 0.0,
 )
 
-internal data class Installment(val number: Int, val dueDate: String, val principal: Double, val interest: Double) {
+data class Installment(val number: Int, val dueDate: String, val principal: Double, val interest: Double) {
     val total: Double get() = principal + interest
 }
 
-internal data class InstallmentStatus(val installment: Installment, val unpaid: Double, val penalty: Double, val penaltyOutstanding: Double, val daysOverdue: Int) {
+data class InstallmentStatus(val installment: Installment, val unpaid: Double, val penalty: Double, val penaltyOutstanding: Double, val daysOverdue: Int) {
     val isOverdue: Boolean get() = daysOverdue > 0 && (unpaid > 0.009 || penaltyOutstanding > 0.009)
 }

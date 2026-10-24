@@ -1,18 +1,21 @@
-import UIKit
 import SwiftUI
-import Shared
-
-struct ComposeView: UIViewControllerRepresentable {
-    func makeUIViewController(context: Self.Context) -> UIViewController {
-        MainViewControllerKt.MainViewController()
-    }
-
-    func updateUIViewController(_ uiViewController: UIViewController, context: Self.Context) {}
-}
 
 struct ContentView: View {
+    @StateObject private var store = AppStore()
+
     var body: some View {
-        ComposeView()
-            .ignoresSafeArea()
+        TabView {
+            DashboardScreen(store: store)
+                .tabItem { Label("Dashboard", systemImage: "square.grid.2x2") }
+            ClientScreen(store: store)
+                .tabItem { Label("Clients", systemImage: "person.2") }
+            LoanScreen(store: store)
+                .tabItem { Label("Loans", systemImage: "doc.text") }
+            PaymentScreen(store: store)
+                .tabItem { Label("Payments", systemImage: "creditcard") }
+            SettingsScreen(store: store)
+                .tabItem { Label("Settings", systemImage: "gear") }
+        }
+        .tint(.blue)
     }
 }
