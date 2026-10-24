@@ -35,13 +35,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
 @Composable
-internal fun LoanManagement(clients: List<Client>, loans: MutableList<Loan>, payments: MutableList<Payment>, defaultPenaltyRule: PenaltyRule, onDataChanged: () -> Unit, modifier: Modifier = Modifier) {
+internal fun LoanManagement(
+    clients: List<Client>,
+    loans: List<Loan>,
+    payments: List<Payment>,
+    defaultPenaltyRule: PenaltyRule,
+    onSaveLoan: (Loan, Int?) -> Unit,
+    onUpdateLoan: (Loan) -> Unit,
+    onReleaseLoan: (Int, String, Double, String, String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     var showCreate by remember { mutableStateOf(false) }
     var editingLoan by remember { mutableStateOf<Loan?>(null) }
     var selectedLoan by remember { mutableStateOf<Loan?>(null) }
     var releasingLoan by remember { mutableStateOf<Loan?>(null) }
-    var nextId by remember { mutableStateOf((loans.maxOfOrNull { it.id } ?: 0) + 1) }
-
     Column(modifier.background(Color(0xFFF7F8FA)).padding(horizontal = 20.dp)) {
         Spacer(Modifier.height(22.dp))
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
@@ -83,12 +90,7 @@ internal fun LoanManagement(clients: List<Client>, loans: MutableList<Loan>, pay
             defaultPenaltyRule = defaultPenaltyRule,
             onDismiss = { showCreate = false; editingLoan = null },
             onSave = { saved ->
-                if (editingLoan == null) loans.add(saved.copy(id = nextId++))
-                else {
-                    val index = loans.indexOfFirst { it.id == editingLoan?.id }
-                    if (index >= 0) loans[index] = saved.copy(id = editingLoan!!.id, status = editingLoan!!.status)
-                }
-                onDataChanged()
+                onSaveLoan(saved, editingLoan?.id)
                 showCreate = false
                 editingLoan = null
             },
@@ -103,12 +105,7 @@ internal fun LoanManagement(clients: List<Client>, loans: MutableList<Loan>, pay
             payments = payments,
             defaultPenaltyRule = defaultPenaltyRule,
             onDismiss = { selectedLoan = null },
-            onUpdate = { updated ->
-                val index = loans.indexOfFirst { it.id == updated.id }
-                if (index >= 0) loans[index] = updated
-                reallocateLoanPayments(updated, payments, defaultPenaltyRule)
-                onDataChanged()
-            },
+            onUpdate = onUpdateLoan,
             onEdit = { editingLoan = currentLoan; selectedLoan = null },
             onRelease = { releasingLoan = currentLoan; selectedLoan = null },
         )
@@ -119,15 +116,7 @@ internal fun LoanManagement(clients: List<Client>, loans: MutableList<Loan>, pay
             loan = loan,
             onDismiss = { releasingLoan = null },
             onSave = { date, amount, method, reference ->
-                val index = loans.indexOfFirst { it.id == loan.id }
-                if (index >= 0) loans[index] = loan.copy(
-                    status = LoanStatus.Released,
-                    releaseDate = date,
-                    releaseAmount = amount,
-                    releaseMethod = method,
-                    releaseReference = reference,
-                )
-                onDataChanged()
+                onReleaseLoan(loan.id, date, amount, method, reference)
                 releasingLoan = null
             },
         )

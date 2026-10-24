@@ -37,9 +37,9 @@ import androidx.compose.ui.unit.dp
 internal fun PaymentManagement(
     clients: List<Client>,
     loans: List<Loan>,
-    payments: MutableList<Payment>,
-    defaultPenaltyRule: PenaltyRule,
-    onPaymentsChanged: () -> Unit,
+    payments: List<Payment>,
+    onSavePayment: (Payment, Int?) -> Unit,
+    onVoidPayment: (Payment, String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var showCreate by remember { mutableStateOf(false) }
@@ -48,7 +48,6 @@ internal fun PaymentManagement(
     var receiptPayment by remember { mutableStateOf<Payment?>(null) }
     var filter by remember { mutableStateOf("All loans and clients") }
     var filterMenu by remember { mutableStateOf(false) }
-    var nextId by remember { mutableStateOf((payments.maxOfOrNull { it.id } ?: 0) + 1) }
     val filterOptions = listOf("All loans and clients") + clients.map { client ->
         "Client #${client.id}: ${client.name}"
     } + loans.map { loan ->
@@ -113,20 +112,7 @@ internal fun PaymentManagement(
             payment = editingPayment,
             onDismiss = { showCreate = false; editingPayment = null },
             onSave = { saved ->
-                val priorLoanId = editingPayment?.loanId
-                if (editingPayment == null) {
-                    payments.add(saved.copy(id = nextId++))
-                } else {
-                    val index = payments.indexOfFirst { it.id == editingPayment?.id }
-                    if (index >= 0) payments[index] = saved.copy(id = editingPayment!!.id)
-                }
-                val affectedLoanId = saved.loanId
-                if (priorLoanId != null && priorLoanId != affectedLoanId) {
-                    loans.firstOrNull { it.id == priorLoanId }?.let { reallocateLoanPayments(it, payments, defaultPenaltyRule) }
-                }
-                val loan = loans.firstOrNull { it.id == affectedLoanId }
-                if (loan != null) reallocateLoanPayments(loan, payments, defaultPenaltyRule)
-                onPaymentsChanged()
+                onSavePayment(saved, editingPayment?.id)
                 showCreate = false
                 editingPayment = null
             },
@@ -138,10 +124,7 @@ internal fun PaymentManagement(
             payment = payment,
             onDismiss = { voidingPayment = null },
             onVoid = { reason ->
-                val index = payments.indexOfFirst { it.id == payment.id }
-                if (index >= 0) payments[index] = payment.copy(voidReason = reason)
-                loans.firstOrNull { it.id == payment.loanId }?.let { reallocateLoanPayments(it, payments, defaultPenaltyRule) }
-                onPaymentsChanged()
+                onVoidPayment(payment, reason)
                 voidingPayment = null
             },
         )

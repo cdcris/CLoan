@@ -9,11 +9,14 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import org.example.project.db.Database
 
 internal data class MenuItem(val title: String, val symbol: String)
@@ -29,14 +32,13 @@ internal val menuItems = listOf(
 @Composable
 fun App(database: Database) {
     MaterialTheme {
+        val appViewModel: AppViewModel = viewModel(
+            factory = viewModelFactory {
+                initializer { AppViewModel(database) }
+            },
+        )
+        val state by appViewModel.uiState.collectAsStateWithLifecycle()
         var selectedIndex by remember { mutableStateOf(0) }
-        val clients = remember(database) { mutableStateListOf(*database.readEntities("clients", ::decodeClient).toTypedArray()) }
-        val loans = remember(database) { mutableStateListOf(*database.readEntities("loans", ::decodeLoan).toTypedArray()) }
-        val payments = remember(database) { mutableStateListOf(*database.readEntities("payments", ::decodePayment).toTypedArray()) }
-        var defaultPenaltyRule by remember(database) { mutableStateOf(database.readPenaltyRule()) }
-        val saveClients: (List<Client>) -> Unit = { database.replaceEntities("clients", it, Client::id, ::encodeClient) }
-        val saveLoans: (List<Loan>) -> Unit = { database.replaceEntities("loans", it, Loan::id, ::encodeLoan) }
-        val savePayments: (List<Payment>) -> Unit = { database.replaceEntities("payments", it, Payment::id, ::encodePayment) }
 
         Scaffold(
             bottomBar = {
@@ -55,45 +57,43 @@ fun App(database: Database) {
         ) { contentPadding ->
             if (selectedIndex == 0) {
                 DashboardManagement(
-                    clients = clients,
-                    loans = loans,
-                    payments = payments,
-                    defaultPenaltyRule = defaultPenaltyRule,
+                    clients = state.clients,
+                    loans = state.loans,
+                    payments = state.payments,
+                    defaultPenaltyRule = state.defaultPenaltyRule,
                     modifier = Modifier.fillMaxSize().padding(contentPadding),
                 )
             } else if (selectedIndex == 1) {
                 ClientManagement(
-                    clients = clients,
-                    onClientsChanged = { saveClients(clients) },
+                    clients = state.clients,
+                    onSaveClient = appViewModel::saveClient,
+                    onToggleClientArchived = appViewModel::toggleClientArchived,
                     modifier = Modifier.fillMaxSize().padding(contentPadding),
                 )
             } else if (selectedIndex == 2) {
                 LoanManagement(
-                    clients = clients,
-                    loans = loans,
-                    payments = payments,
-                    defaultPenaltyRule = defaultPenaltyRule,
-                    onDataChanged = { saveLoans(loans); savePayments(payments) },
+                    clients = state.clients,
+                    loans = state.loans,
+                    payments = state.payments,
+                    defaultPenaltyRule = state.defaultPenaltyRule,
+                    onSaveLoan = appViewModel::saveLoan,
+                    onUpdateLoan = appViewModel::updateLoan,
+                    onReleaseLoan = appViewModel::releaseLoan,
                     modifier = Modifier.fillMaxSize().padding(contentPadding),
                 )
             } else if (selectedIndex == 3) {
                 PaymentManagement(
-                    clients = clients,
-                    loans = loans,
-                    payments = payments,
-                    defaultPenaltyRule = defaultPenaltyRule,
-                    onPaymentsChanged = { savePayments(payments) },
+                    clients = state.clients,
+                    loans = state.loans,
+                    payments = state.payments,
+                    onSavePayment = appViewModel::savePayment,
+                    onVoidPayment = appViewModel::voidPayment,
                     modifier = Modifier.fillMaxSize().padding(contentPadding),
                 )
             } else {
                 SettingsManagement(
-                    currentRule = defaultPenaltyRule,
-                    onRuleChange = { updated ->
-                        defaultPenaltyRule = updated
-                        database.savePenaltyRule(updated)
-                        loans.forEach { loan -> reallocateLoanPayments(loan, payments, updated) }
-                        savePayments(payments)
-                    },
+                    currentRule = state.defaultPenaltyRule,
+                    onRuleChange = appViewModel::updateDefaultPenaltyRule,
                     modifier = Modifier.fillMaxSize().padding(contentPadding),
                 )
             }

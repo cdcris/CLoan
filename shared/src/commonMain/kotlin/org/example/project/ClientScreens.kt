@@ -97,14 +97,17 @@ internal fun SettingsManagement(currentRule: PenaltyRule, onRuleChange: (Penalty
 }
 
 @Composable
-internal fun ClientManagement(clients: MutableList<Client>, onClientsChanged: () -> Unit, modifier: Modifier = Modifier) {
+internal fun ClientManagement(
+    clients: List<Client>,
+    onSaveClient: (Client, Int?) -> Unit,
+    onToggleClientArchived: (Client) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     var query by remember { mutableStateOf("") }
     var statusFilter by remember { mutableStateOf("All status") }
     var recordFilter by remember { mutableStateOf("Current") }
     var editingClient by remember { mutableStateOf<Client?>(null) }
     var showCreate by remember { mutableStateOf(false) }
-    var nextId by remember { mutableStateOf((clients.maxOfOrNull { it.id } ?: 0) + 1) }
-
     val visibleClients = clients.filter { client ->
         val matchesQuery = query.isBlank() || listOf(client.name, client.contactNumber).any { it.contains(query.trim(), ignoreCase = true) }
         val matchesStatus = statusFilter == "All status" || client.status.label == statusFilter
@@ -166,11 +169,7 @@ internal fun ClientManagement(clients: MutableList<Client>, onClientsChanged: ()
                     ClientCard(
                         client = client,
                         onEdit = { editingClient = client },
-                        onArchive = {
-                            val position = clients.indexOfFirst { it.id == client.id }
-                            if (position >= 0) clients[position] = client.copy(archived = !client.archived)
-                            onClientsChanged()
-                        },
+                        onArchive = { onToggleClientArchived(client) },
                     )
                 }
             }
@@ -182,13 +181,7 @@ internal fun ClientManagement(clients: MutableList<Client>, onClientsChanged: ()
             client = editingClient,
             onDismiss = { showCreate = false; editingClient = null },
             onSave = { saved ->
-                if (editingClient == null) {
-                    clients.add(saved.copy(id = nextId++))
-                } else {
-                    val position = clients.indexOfFirst { it.id == editingClient?.id }
-                    if (position >= 0) clients[position] = saved.copy(id = editingClient!!.id, archived = editingClient!!.archived)
-                }
-                onClientsChanged()
+                onSaveClient(saved, editingClient?.id)
                 showCreate = false
                 editingClient = null
             },
