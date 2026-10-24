@@ -1,6 +1,7 @@
 package org.example.project
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -22,9 +23,12 @@ import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -33,6 +37,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -468,7 +473,7 @@ private fun ClientEditorDialog(client: Client?, onDismiss: () -> Unit, onSave: (
             Column(Modifier.fillMaxWidth().height(500.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Personal details", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                 EditorField("Full name", name) { name = it }
-                EditorField("Birthdate (e.g. 12 Mar 1990)", birthdate) { birthdate = it }
+                DatePickerField("Birthdate", birthdate) { birthdate = it }
                 EditorField("Contact number", contact) { contact = it }
                 EditorField("Address", address) { address = it }
                 EditorField("Employer and monthly income", employer) { employer = it }
@@ -503,6 +508,36 @@ private fun ClientEditorDialog(client: Client?, onDismiss: () -> Unit, onSave: (
 @Composable
 private fun EditorField(label: String, value: String, onValueChange: (String) -> Unit) {
     OutlinedTextField(value = value, onValueChange = onValueChange, modifier = Modifier.fillMaxWidth(), label = { Text(label) }, singleLine = label != "Address")
+}
+
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
+private fun DatePickerField(label: String, value: String, modifier: Modifier = Modifier, onValueChange: (String) -> Unit) {
+    var pickerOpen by remember { mutableStateOf(false) }
+    OutlinedTextField(
+        value = value,
+        onValueChange = {},
+        modifier = modifier.fillMaxWidth().clickable { pickerOpen = true },
+        label = { Text(label) },
+        singleLine = true,
+        readOnly = true,
+        trailingIcon = { TextButton(onClick = { pickerOpen = true }) { Text("Choose") } },
+    )
+    if (pickerOpen) {
+        val pickerState = rememberDatePickerState(initialSelectedDateMillis = parseDate(value)?.toUtcMillis())
+        DatePickerDialog(
+            onDismissRequest = { pickerOpen = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    pickerState.selectedDateMillis?.let { onValueChange(millisToSimpleDate(it).toString()) }
+                    pickerOpen = false
+                }, enabled = pickerState.selectedDateMillis != null) { Text("OK") }
+            },
+            dismissButton = { TextButton(onClick = { pickerOpen = false }) { Text("Cancel") } },
+        ) {
+            DatePicker(state = pickerState)
+        }
+    }
 }
 
 @Composable
@@ -682,7 +717,7 @@ private fun LoanEditorDialog(clients: List<Client>, loan: Loan?, defaultPenaltyR
                 EditorField("Principal amount", principal) { principal = it }
                 EditorField("Annual interest rate (%)", rate) { rate = it }
                 EditorField("Term (number of payments, max 120)", term) { term = it }
-                EditorField("Start date (YYYY-MM-DD)", startDate) { startDate = it }
+                DatePickerField("Start date", startDate) { startDate = it }
                 androidx.compose.foundation.layout.Box {
                     OutlinedButton(onClick = { frequencyMenu = true }) { Text("${frequency.label} payment frequency  ▾") }
                     DropdownMenu(expanded = frequencyMenu, onDismissRequest = { frequencyMenu = false }) {
@@ -830,7 +865,7 @@ private fun ReleaseFundsDialog(loan: Loan, onDismiss: () -> Unit, onSave: (Strin
         title = { Text("Record release of funds") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                EditorField("Release date (YYYY-MM-DD)", date) { date = it }
+                DatePickerField("Release date", date) { date = it }
                 EditorField("Amount released", amount) { amount = it }
                 androidx.compose.foundation.layout.Box {
                     OutlinedButton(onClick = { methodMenu = true }) { Text("$method  ▾") }
@@ -865,6 +900,39 @@ private data class SimpleDate(val year: Int, val month: Int, val day: Int) {
     }
 
     override fun toString(): String = "${year.toString().padStart(4, '0')}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}"
+}
+
+private fun SimpleDate.toUtcMillis(): Long {
+    var days = 0L
+    if (year >= 1970) {
+        for (currentYear in 1970 until year) days += if (daysInMonth(currentYear, 2) == 29) 366 else 365
+    } else {
+        for (currentYear in year until 1970) days -= if (daysInMonth(currentYear, 2) == 29) 366 else 365
+    }
+    for (currentMonth in 1 until month) days += daysInMonth(year, currentMonth)
+    days += day - 1
+    return days * 86_400_000L
+}
+
+private fun millisToSimpleDate(millis: Long): SimpleDate {
+    var days = millis / 86_400_000L
+    var year = 1970
+    while (days < 0) {
+        year--
+        days += if (daysInMonth(year, 2) == 29) 366 else 365
+    }
+    while (true) {
+        val yearDays = if (daysInMonth(year, 2) == 29) 366 else 365
+        if (days < yearDays) break
+        days -= yearDays
+        year++
+    }
+    var month = 1
+    while (days >= daysInMonth(year, month)) {
+        days -= daysInMonth(year, month)
+        month++
+    }
+    return SimpleDate(year, month, days.toInt() + 1)
 }
 
 private fun parseDate(value: String): SimpleDate? {
@@ -1098,7 +1166,7 @@ private fun PaymentEditorDialog(loans: List<Loan>, payment: Payment?, onDismiss:
                     }
                 }
                 EditorField("Amount", amount) { amount = it }
-                EditorField("Payment date (YYYY-MM-DD)", date) { date = it }
+                DatePickerField("Payment date", date) { date = it }
                 androidx.compose.foundation.layout.Box {
                     OutlinedButton(onClick = { methodMenu = true }) { Text("$method  ▾") }
                     DropdownMenu(expanded = methodMenu, onDismissRequest = { methodMenu = false }) {
@@ -1352,9 +1420,9 @@ private fun DashboardManagement(
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
             if (!isOverdueReport) {
-                OutlinedTextField(value = reportFrom, onValueChange = { reportFrom = it }, modifier = Modifier.weight(1f), label = { Text("From (YYYY-MM-DD)") }, singleLine = true)
+                DatePickerField("From", reportFrom, Modifier.weight(1f)) { reportFrom = it }
             }
-            OutlinedTextField(value = reportTo, onValueChange = { reportTo = it }, modifier = Modifier.weight(1f), label = { Text(if (isOverdueReport) "As of date" else "To date") }, singleLine = true)
+            DatePickerField(if (isOverdueReport) "As of date" else "To date", reportTo, Modifier.weight(1f)) { reportTo = it }
         }
         if (!datesValid) Text("Enter valid dates in YYYY-MM-DD order.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
         Button(
