@@ -1,0 +1,21 @@
+CREATE TABLE app_data (
+    section TEXT NOT NULL,
+    id INTEGER NOT NULL,
+    payload TEXT NOT NULL,
+    PRIMARY KEY (section, id)
+);
+
+readSection:
+SELECT id, payload FROM app_data WHERE section = ? ORDER BY id;
+
+replaceSection:
+DELETE FROM app_data WHERE section = ?;
+
+insertRecord:
+INSERT INTO app_data(section, id, payload) VALUES (?, ?, ?);
+
+readSetting:
+SELECT payload FROM app_data WHERE section = 'settings' AND id = ?;
+
+writeSetting:
+INSERT OR REPLACE INTO app_data(section, id, payload) VALUES ('settings', ?, ?);

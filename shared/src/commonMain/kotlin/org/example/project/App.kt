@@ -43,9 +43,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import kotlin.math.round
+import org.example.project.db.Database
 
 private data class MenuItem(val title: String, val symbol: String)
 
@@ -76,12 +76,6 @@ private data class Client(
     val archived: Boolean = false,
 )
 
-private val sampleClients = listOf(
-    Client(1, "Maria Santos", "12 Mar 1990", "+63 917 555 0142", "Quezon City, Metro Manila", "Santos Trading · ₱32,000/mo", "Ana Santos · +63 917 555 0143", ClientStatus.Active, listOf("maria-valid-id.jpg", "proof-of-income.pdf")),
-    Client(2, "Juan Dela Cruz", "04 Jul 1985", "+63 918 221 9084", "Makati City, Metro Manila", "Dela Cruz Construction · ₱45,000/mo", "Pedro Dela Cruz · +63 918 221 9085", ClientStatus.Inactive),
-    Client(3, "Angela Reyes", "23 Nov 1994", "+63 905 778 2310", "Pasig City, Metro Manila", "Freelance · ₱28,000/mo", "Luz Reyes · +63 905 778 2311", ClientStatus.Blacklisted),
-)
-
 internal enum class PaymentFrequency(val label: String, val periodsPerYear: Int) {
     Weekly("Weekly", 52),
     SemiMonthly("Semi-monthly", 24),
@@ -104,6 +98,77 @@ internal enum class PenaltyMode(val label: String) {
 }
 
 internal data class PenaltyRule(val mode: PenaltyMode, val rate: Double)
+
+private fun <T> Database.readEntities(section: String, decode: (Int, String) -> T): List<T> =
+    appDataQueries.readSection(section).executeAsList().map { decode(it.id.toInt(), it.payload) }
+
+private fun <T> Database.replaceEntities(
+    section: String,
+    entities: List<T>,
+    id: (T) -> Int,
+    encode: (T) -> String,
+) {
+    transaction {
+        appDataQueries.replaceSection(section)
+        entities.forEach { entity -> appDataQueries.insertRecord(section, id(entity).toLong(), encode(entity)) }
+    }
+}
+
+private fun Database.readPenaltyRule(): PenaltyRule {
+    val parts = appDataQueries.readSetting(1L).executeAsOneOrNull()?.split('|') ?: return PenaltyRule(PenaltyMode.Percentage, 5.0)
+    val mode = PenaltyMode.entries.firstOrNull { it.name == parts[0] } ?: PenaltyMode.Percentage
+    return PenaltyRule(mode, parts.getOrNull(1)?.toDoubleOrNull() ?: 5.0)
+}
+
+private fun Database.savePenaltyRule(rule: PenaltyRule) {
+    appDataQueries.writeSetting(1L, "${rule.mode.name}|${rule.rate}")
+}
+
+internal fun encodeFields(fields: List<String>): String = fields.joinToString("|") { field ->
+    field.replace("%", "%25").replace("|", "%7C").replace(";", "%3B")
+}
+
+internal fun decodeFields(payload: String): List<String> = payload.split('|').map { field ->
+    field.replace("%7C", "|").replace("%3B", ";").replace("%25", "%")
+}
+
+private fun encodeClient(value: Client) = encodeFields(listOf(
+    value.name, value.birthdate, value.contactNumber, value.address, value.employerIncome,
+    value.emergencyContact, value.status.name, value.documents.joinToString("\u001f"), value.archived.toString(),
+))
+
+private fun decodeClient(id: Int, payload: String): Client {
+    val fields = decodeFields(payload)
+    return Client(id, fields[0], fields[1], fields[2], fields[3], fields[4], fields[5],
+        ClientStatus.valueOf(fields[6]), fields[7].takeIf { it.isNotEmpty() }?.split("\u001f").orEmpty(), fields[8].toBoolean())
+}
+
+private fun encodeLoan(value: Loan) = encodeFields(listOf(
+    value.clientId.toString(), value.principal.toString(), value.annualInterestRate.toString(), value.term.toString(),
+    value.startDate, value.frequency.name, value.status.name, value.releaseDate, value.releaseAmount?.toString().orEmpty(),
+    value.releaseMethod, value.releaseReference, value.penaltyBalance.toString(), value.penaltyRule?.mode?.name.orEmpty(),
+    value.penaltyRule?.rate?.toString().orEmpty(),
+))
+
+private fun decodeLoan(id: Int, payload: String): Loan {
+    val fields = decodeFields(payload)
+    val penaltyMode = fields[12].takeIf { it.isNotEmpty() }?.let(PenaltyMode::valueOf)
+    val penaltyRule = penaltyMode?.let { PenaltyRule(it, fields[13].toDouble()) }
+    return Loan(id, fields[0].toInt(), fields[1].toDouble(), fields[2].toDouble(), fields[3].toInt(), fields[4],
+        PaymentFrequency.valueOf(fields[5]), LoanStatus.valueOf(fields[6]), fields[7], fields[8].toDoubleOrNull(),
+        fields[9], fields[10], fields[11].toDouble(), penaltyRule)
+}
+
+private fun encodePayment(value: Payment) = encodeFields(listOf(
+    value.loanId.toString(), value.amount.toString(), value.date, value.method, value.reference, value.voidReason,
+    value.allocatedPenalty.toString(), value.allocatedInterest.toString(), value.allocatedPrincipal.toString(), value.unappliedAmount.toString(),
+))
+
+private fun decodePayment(id: Int, payload: String): Payment {
+    val fields = decodeFields(payload)
+    return Payment(id, fields[0].toInt(), fields[1].toDouble(), fields[2], fields[3], fields[4], fields[5],
+        fields[6].toDouble(), fields[7].toDouble(), fields[8].toDouble(), fields[9].toDouble())
+}
 
 internal data class Loan(
     val id: Int,
@@ -144,28 +209,17 @@ internal data class InstallmentStatus(val installment: Installment, val unpaid: 
     val isOverdue: Boolean get() = daysOverdue > 0 && (unpaid > 0.009 || penaltyOutstanding > 0.009)
 }
 
-private val sampleLoans = listOf(
-    Loan(1, 1, 50_000.0, 12.0, 12, "2026-09-01", PaymentFrequency.Monthly, LoanStatus.Active, "2026-09-01", 50_000.0, "Bank transfer", "REL-1032"),
-    Loan(2, 2, 20_000.0, 10.0, 10, "2026-10-15", PaymentFrequency.SemiMonthly, LoanStatus.Pending),
-)
-
-private val samplePayments = listOf(
-    Payment(1, 1, 5_000.0, "2026-10-01", "Bank transfer", "TXN-10482"),
-)
-
 @Composable
-@Preview
-fun App() {
+fun App(database: Database) {
     MaterialTheme {
         var selectedIndex by remember { mutableStateOf(0) }
-        val clients = remember { mutableStateListOf(*sampleClients.toTypedArray()) }
-        val loans = remember { mutableStateListOf(*sampleLoans.toTypedArray()) }
-        var defaultPenaltyRule by remember { mutableStateOf(PenaltyRule(PenaltyMode.Percentage, 5.0)) }
-        val payments = remember {
-            mutableStateListOf(*samplePayments.toTypedArray()).apply {
-                sampleLoans.forEach { loan -> reallocateLoanPayments(loan, this, defaultPenaltyRule) }
-            }
-        }
+        val clients = remember(database) { mutableStateListOf(*database.readEntities("clients", ::decodeClient).toTypedArray()) }
+        val loans = remember(database) { mutableStateListOf(*database.readEntities("loans", ::decodeLoan).toTypedArray()) }
+        val payments = remember(database) { mutableStateListOf(*database.readEntities("payments", ::decodePayment).toTypedArray()) }
+        var defaultPenaltyRule by remember(database) { mutableStateOf(database.readPenaltyRule()) }
+        val saveClients: (List<Client>) -> Unit = { database.replaceEntities("clients", it, Client::id, ::encodeClient) }
+        val saveLoans: (List<Loan>) -> Unit = { database.replaceEntities("loans", it, Loan::id, ::encodeLoan) }
+        val savePayments: (List<Payment>) -> Unit = { database.replaceEntities("payments", it, Payment::id, ::encodePayment) }
 
         Scaffold(
             bottomBar = {
@@ -193,6 +247,7 @@ fun App() {
             } else if (selectedIndex == 1) {
                 ClientManagement(
                     clients = clients,
+                    onClientsChanged = { saveClients(clients) },
                     modifier = Modifier.fillMaxSize().padding(contentPadding),
                 )
             } else if (selectedIndex == 2) {
@@ -201,6 +256,7 @@ fun App() {
                     loans = loans,
                     payments = payments,
                     defaultPenaltyRule = defaultPenaltyRule,
+                    onDataChanged = { saveLoans(loans); savePayments(payments) },
                     modifier = Modifier.fillMaxSize().padding(contentPadding),
                 )
             } else if (selectedIndex == 3) {
@@ -209,6 +265,7 @@ fun App() {
                     loans = loans,
                     payments = payments,
                     defaultPenaltyRule = defaultPenaltyRule,
+                    onPaymentsChanged = { savePayments(payments) },
                     modifier = Modifier.fillMaxSize().padding(contentPadding),
                 )
             } else {
@@ -216,7 +273,9 @@ fun App() {
                     currentRule = defaultPenaltyRule,
                     onRuleChange = { updated ->
                         defaultPenaltyRule = updated
+                        database.savePenaltyRule(updated)
                         loans.forEach { loan -> reallocateLoanPayments(loan, payments, updated) }
+                        savePayments(payments)
                     },
                     modifier = Modifier.fillMaxSize().padding(contentPadding),
                 )
@@ -248,7 +307,7 @@ private fun SettingsManagement(currentRule: PenaltyRule, onRuleChange: (PenaltyR
 }
 
 @Composable
-private fun ClientManagement(clients: MutableList<Client>, modifier: Modifier = Modifier) {
+private fun ClientManagement(clients: MutableList<Client>, onClientsChanged: () -> Unit, modifier: Modifier = Modifier) {
     var query by remember { mutableStateOf("") }
     var statusFilter by remember { mutableStateOf("All status") }
     var recordFilter by remember { mutableStateOf("Current") }
@@ -320,6 +379,7 @@ private fun ClientManagement(clients: MutableList<Client>, modifier: Modifier = 
                         onArchive = {
                             val position = clients.indexOfFirst { it.id == client.id }
                             if (position >= 0) clients[position] = client.copy(archived = !client.archived)
+                            onClientsChanged()
                         },
                     )
                 }
@@ -338,6 +398,7 @@ private fun ClientManagement(clients: MutableList<Client>, modifier: Modifier = 
                     val position = clients.indexOfFirst { it.id == editingClient?.id }
                     if (position >= 0) clients[position] = saved.copy(id = editingClient!!.id, archived = editingClient!!.archived)
                 }
+                onClientsChanged()
                 showCreate = false
                 editingClient = null
             },
@@ -445,7 +506,7 @@ private fun EditorField(label: String, value: String, onValueChange: (String) ->
 }
 
 @Composable
-private fun LoanManagement(clients: List<Client>, loans: MutableList<Loan>, payments: MutableList<Payment>, defaultPenaltyRule: PenaltyRule, modifier: Modifier = Modifier) {
+private fun LoanManagement(clients: List<Client>, loans: MutableList<Loan>, payments: MutableList<Payment>, defaultPenaltyRule: PenaltyRule, onDataChanged: () -> Unit, modifier: Modifier = Modifier) {
     var showCreate by remember { mutableStateOf(false) }
     var editingLoan by remember { mutableStateOf<Loan?>(null) }
     var selectedLoan by remember { mutableStateOf<Loan?>(null) }
@@ -498,6 +559,7 @@ private fun LoanManagement(clients: List<Client>, loans: MutableList<Loan>, paym
                     val index = loans.indexOfFirst { it.id == editingLoan?.id }
                     if (index >= 0) loans[index] = saved.copy(id = editingLoan!!.id, status = editingLoan!!.status)
                 }
+                onDataChanged()
                 showCreate = false
                 editingLoan = null
             },
@@ -516,6 +578,7 @@ private fun LoanManagement(clients: List<Client>, loans: MutableList<Loan>, paym
                 val index = loans.indexOfFirst { it.id == updated.id }
                 if (index >= 0) loans[index] = updated
                 reallocateLoanPayments(updated, payments, defaultPenaltyRule)
+                onDataChanged()
             },
             onEdit = { editingLoan = currentLoan; selectedLoan = null },
             onRelease = { releasingLoan = currentLoan; selectedLoan = null },
@@ -535,6 +598,7 @@ private fun LoanManagement(clients: List<Client>, loans: MutableList<Loan>, paym
                     releaseMethod = method,
                     releaseReference = reference,
                 )
+                onDataChanged()
                 releasingLoan = null
             },
         )
@@ -851,6 +915,7 @@ private fun PaymentManagement(
     loans: List<Loan>,
     payments: MutableList<Payment>,
     defaultPenaltyRule: PenaltyRule,
+    onPaymentsChanged: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var showCreate by remember { mutableStateOf(false) }
@@ -937,6 +1002,7 @@ private fun PaymentManagement(
                 }
                 val loan = loans.firstOrNull { it.id == affectedLoanId }
                 if (loan != null) reallocateLoanPayments(loan, payments, defaultPenaltyRule)
+                onPaymentsChanged()
                 showCreate = false
                 editingPayment = null
             },
@@ -951,6 +1017,7 @@ private fun PaymentManagement(
                 val index = payments.indexOfFirst { it.id == payment.id }
                 if (index >= 0) payments[index] = payment.copy(voidReason = reason)
                 loans.firstOrNull { it.id == payment.loanId }?.let { reallocateLoanPayments(it, payments, defaultPenaltyRule) }
+                onPaymentsChanged()
                 voidingPayment = null
             },
         )

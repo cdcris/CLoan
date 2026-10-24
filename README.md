@@ -26,6 +26,10 @@ Use the run button in your IDE's editor gutter, or run tests using Gradle tasks:
 - Android tests: `./gradlew :shared:testAndroidHostTest`
 - iOS tests: `./gradlew :shared:iosSimulatorArm64Test`
 
+### Local data
+
+Clients, loans, payments, and the default penalty rule are stored in a local SQLite database through SQLDelight. The app starts with empty records; changes made in the menus persist across launches. Android and iOS each keep a separate database on the device.
+
 ---
 
 Learn more about [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatform-dev/get-started.html)…

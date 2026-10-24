@@ -35,6 +35,13 @@ class SharedCommonTest {
         assertEquals(3.06, status.penalty)
     }
 
+    @Test
+    fun databaseFieldEncodingPreservesSeparatorsAndUnicode() {
+        val fields = listOf("A|B;C%", "Quezon City · ₱32,000/mo", "", "file.pdf")
+
+        assertEquals(fields, decodeFields(encodeFields(fields)))
+    }
+
     private fun testLoan() = Loan(
         id = 1,
         clientId = 1,

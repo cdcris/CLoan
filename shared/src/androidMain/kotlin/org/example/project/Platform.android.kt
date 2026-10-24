@@ -1,6 +1,9 @@
 package org.example.project
 
 import android.os.Build
+import android.content.Context
+import app.cash.sqldelight.driver.android.AndroidSqliteDriver
+import org.example.project.db.Database
 import java.util.Calendar
 
 class AndroidPlatform : Platform {
@@ -8,6 +11,9 @@ class AndroidPlatform : Platform {
 }
 
 actual fun getPlatform(): Platform = AndroidPlatform()
+
+fun createDatabase(context: Context, databaseName: String = "cloan.db"): Database =
+    Database(AndroidSqliteDriver(Database.Schema, context.applicationContext, databaseName))
 
 actual fun currentDateIso(): String {
     val calendar = Calendar.getInstance()

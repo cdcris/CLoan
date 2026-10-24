@@ -6,15 +6,18 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
+import org.example.project.db.Database
 
 class MainActivity : ComponentActivity() {
+    private val database by lazy { createDatabase(applicationContext) }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         org.example.project.ReceiptPdfStorage.context = applicationContext
 
         setContent {
-            App()
+            App(database)
         }
     }
 }
@@ -22,5 +25,13 @@ class MainActivity : ComponentActivity() {
 @Preview
 @Composable
 fun AppAndroidPreview() {
-    App()
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val previewDatabase = rememberPreviewDatabase(context)
+    App(previewDatabase)
 }
+
+@Composable
+private fun rememberPreviewDatabase(context: android.content.Context): Database =
+    androidx.compose.runtime.remember(context) {
+        createDatabase(context, "cloan-preview.db")
+    }
