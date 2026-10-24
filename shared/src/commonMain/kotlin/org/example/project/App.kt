@@ -1,5 +1,6 @@
 package org.example.project
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -47,10 +48,37 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathFillType
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlin.math.round
 import org.example.project.db.Database
+
+private val baselinePersonIcon = ImageVector.Builder(
+    name = "baseline_person_24",
+    defaultWidth = 24.dp,
+    defaultHeight = 24.dp,
+    viewportWidth = 24f,
+    viewportHeight = 24f,
+).apply {
+    path(fill = SolidColor(Color(0xFF3556A8)), pathFillType = PathFillType.NonZero) {
+        moveTo(12f, 12f)
+        curveTo(14.21f, 12f, 16f, 10.21f, 16f, 8f)
+        curveTo(16f, 5.79f, 14.21f, 4f, 12f, 4f)
+        curveTo(9.79f, 4f, 8f, 5.79f, 8f, 8f)
+        curveTo(8f, 10.21f, 9.79f, 12f, 12f, 12f)
+        moveTo(12f, 14f)
+        curveTo(9.33f, 14f, 4f, 15.34f, 4f, 18f)
+        verticalLineTo(20f)
+        horizontalLineTo(20f)
+        verticalLineTo(18f)
+        curveTo(20f, 15.34f, 14.67f, 14f, 12f, 14f)
+        close()
+    }
+}.build()
 
 private data class MenuItem(val title: String, val symbol: String)
 
@@ -145,7 +173,8 @@ private fun encodeClient(value: Client) = encodeFields(listOf(
 private fun decodeClient(id: Int, payload: String): Client {
     val fields = decodeFields(payload)
     return Client(id, fields[0], fields[1], fields[2], fields[3], fields[4], fields[5],
-        ClientStatus.valueOf(fields[6]), fields[7].takeIf { it.isNotEmpty() }?.split("\u001f").orEmpty(), fields[8].toBoolean())
+        ClientStatus.valueOf(fields[6]), fields.getOrNull(7)?.takeIf { it.isNotEmpty() }?.split("\u001f").orEmpty(),
+        fields.getOrNull(8)?.toBoolean() ?: false)
 }
 
 private fun encodeLoan(value: Loan) = encodeFields(listOf(
@@ -419,7 +448,13 @@ private fun ClientCard(client: Client, onEdit: () -> Unit, onArchive: () -> Unit
                 androidx.compose.foundation.layout.Box(
                     Modifier.size(42.dp).background(Color(0xFFE8EEFF), CircleShape),
                     contentAlignment = Alignment.Center,
-                ) { Text(client.name.split(" ").take(2).mapNotNull { it.firstOrNull() }.joinToString(""), color = Color(0xFF3556A8), fontWeight = FontWeight.Bold) }
+                ) {
+                    if (client.documents.isEmpty()) {
+                        Image(imageVector = baselinePersonIcon, contentDescription = "Default client photo", modifier = Modifier.size(24.dp))
+                    } else {
+                        Text(client.name.split(" ").take(2).mapNotNull { it.firstOrNull() }.joinToString(""), color = Color(0xFF3556A8), fontWeight = FontWeight.Bold)
+                    }
+                }
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text(client.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
@@ -485,8 +520,14 @@ private fun ClientEditorDialog(client: Client?, onDismiss: () -> Unit, onSave: (
                         ClientStatus.entries.forEach { option -> DropdownMenuItem(text = { Text(option.label) }, onClick = { status = option; statusMenuOpen = false }) }
                     }
                 }
-                Text("ID photos and documents", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-                Text("Demo mode: enter a filename to attach it to this client.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("ID photos and documents (optional)", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                Text("You can save the client without attaching documents.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (documents.isEmpty()) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Image(imageVector = baselinePersonIcon, contentDescription = "Default client photo preview", modifier = Modifier.size(42.dp))
+                        Text("Default photo preview", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     OutlinedTextField(value = newDocument, onValueChange = { newDocument = it }, modifier = Modifier.weight(1f), singleLine = true, label = { Text("Document filename") })
                     TextButton(onClick = { if (newDocument.isNotBlank()) { documents.add(newDocument.trim()); newDocument = "" } }) { Text("Add") }
