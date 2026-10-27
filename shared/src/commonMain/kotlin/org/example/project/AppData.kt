@@ -2,48 +2,6 @@ package org.example.project
 
 import org.example.project.db.Database
 
-enum class ClientStatus(val label: String) {
-    Active("Active"),
-    Inactive("Inactive"),
-    Blacklisted("Blacklisted"),
-}
-
-data class Client(
-    val id: Int,
-    val name: String,
-    val birthdate: String,
-    val contactNumber: String,
-    val address: String,
-    val employerIncome: String,
-    val emergencyContact: String,
-    val status: ClientStatus,
-    val documents: List<String> = emptyList(),
-    val archived: Boolean = false,
-)
-
-enum class PaymentFrequency(val label: String, val periodsPerYear: Int) {
-    Weekly("Weekly", 52),
-    SemiMonthly("Semi-monthly", 24),
-    Monthly("Monthly", 12),
-}
-
-enum class LoanStatus(val label: String) {
-    Pending("Pending"),
-    Approved("Approved"),
-    Released("Released"),
-    Active("Active"),
-    FullyPaid("Fully Paid"),
-    Overdue("Overdue"),
-    Cancelled("Cancelled"),
-}
-
-enum class PenaltyMode(val label: String) {
-    Flat("Flat amount per overdue installment"),
-    Percentage("Percentage of unpaid installment"),
-}
-
-data class PenaltyRule(val mode: PenaltyMode, val rate: Double)
-
 internal fun <T> Database.readEntities(section: String, decode: (Int, String) -> T): List<T> =
     appDataQueries.readSection(section).executeAsList().map { decode(it.id.toInt(), it.payload) }
 
@@ -116,41 +74,3 @@ internal fun decodePayment(id: Int, payload: String): Payment {
         fields[6].toDouble(), fields[7].toDouble(), fields[8].toDouble(), fields[9].toDouble())
 }
 
-data class Loan(
-    val id: Int,
-    val clientId: Int,
-    val principal: Double,
-    val annualInterestRate: Double,
-    val term: Int,
-    val startDate: String,
-    val frequency: PaymentFrequency,
-    val status: LoanStatus = LoanStatus.Pending,
-    val releaseDate: String = "",
-    val releaseAmount: Double? = null,
-    val releaseMethod: String = "",
-    val releaseReference: String = "",
-    val penaltyBalance: Double = 0.0,
-    val penaltyRule: PenaltyRule? = null,
-)
-
-data class Payment(
-    val id: Int,
-    val loanId: Int,
-    val amount: Double,
-    val date: String,
-    val method: String,
-    val reference: String,
-    val voidReason: String = "",
-    val allocatedPenalty: Double = 0.0,
-    val allocatedInterest: Double = 0.0,
-    val allocatedPrincipal: Double = 0.0,
-    val unappliedAmount: Double = 0.0,
-)
-
-data class Installment(val number: Int, val dueDate: String, val principal: Double, val interest: Double) {
-    val total: Double get() = principal + interest
-}
-
-data class InstallmentStatus(val installment: Installment, val unpaid: Double, val penalty: Double, val penaltyOutstanding: Double, val daysOverdue: Int) {
-    val isOverdue: Boolean get() = daysOverdue > 0 && (unpaid > 0.009 || penaltyOutstanding > 0.009)
-}
