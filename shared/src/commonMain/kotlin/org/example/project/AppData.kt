@@ -36,15 +36,21 @@ internal fun decodeFields(payload: String): List<String> = payload.split('|').ma
 }
 
 internal fun encodeClient(value: Client) = encodeFields(listOf(
-    value.name, value.birthdate, value.contactNumber, value.address, value.employerIncome,
-    value.emergencyContact, value.status.name, value.documents.joinToString("\u001f"), value.archived.toString(),
+    "v2", value.name, value.birthdate, value.contactNumber, value.address, value.emergencyContactName,
+    value.emergencyContactNumber, value.status.name, value.documents.joinToString("\u001f"), value.archived.toString(),
 ))
 
 internal fun decodeClient(id: Int, payload: String): Client {
     val fields = decodeFields(payload)
-    return Client(id, fields[0], fields[1], fields[2], fields[3], fields[4], fields[5],
-        ClientStatus.valueOf(fields[6]), fields.getOrNull(7)?.takeIf { it.isNotEmpty() }?.split("\u001f").orEmpty(),
-        fields.getOrNull(8)?.toBoolean() ?: false)
+    return if (fields[0] == "v2") {
+        Client(id, fields[1], fields[2], fields[3], fields[4], fields[5], fields[6],
+            ClientStatus.valueOf(fields[7]), fields.getOrNull(8)?.takeIf { it.isNotEmpty() }?.split("\u001f").orEmpty(),
+            fields.getOrNull(9)?.toBoolean() ?: false)
+    } else {
+        Client(id, fields[0], fields[1], fields[2], fields[3], fields[5], "",
+            ClientStatus.valueOf(fields[6]), fields.getOrNull(7)?.takeIf { it.isNotEmpty() }?.split("\u001f").orEmpty(),
+            fields.getOrNull(8)?.toBoolean() ?: false)
+    }
 }
 
 internal fun encodeLoan(value: Loan) = encodeFields(listOf(

@@ -197,10 +197,11 @@ internal fun LoanEditorDialog(clients: List<Client>, loan: Loan?, defaultPenalty
                         clients.forEach { client -> DropdownMenuItem(text = { Text(client.name) }, onClick = { clientId = client.id; clientMenu = false }) }
                     }
                 }
-                EditorField("Principal amount", principal) { principal = it }
-                EditorField("Annual interest rate (%)", rate) { rate = it }
-                EditorField("Term (number of payments, max 120)", term) { term = it }
-                DatePickerField("Start date", startDate) { startDate = it }
+                Text("Client *", style = MaterialTheme.typography.labelMedium)
+                EditorField("Principal amount *", principal) { principal = it }
+                EditorField("Annual interest rate (%) *", rate) { rate = it }
+                EditorField("Term (number of payments, max 120) *", term) { term = it }
+                DatePickerField("Start date *", startDate) { startDate = it }
                 androidx.compose.foundation.layout.Box {
                     OutlinedButton(onClick = { frequencyMenu = true }) { Text("${frequency.label} payment frequency  ▾") }
                     DropdownMenu(expanded = frequencyMenu, onDismissRequest = { frequencyMenu = false }) {
@@ -219,7 +220,7 @@ internal fun LoanEditorDialog(clients: List<Client>, loan: Loan?, defaultPenalty
                             PenaltyMode.entries.forEach { option -> DropdownMenuItem(text = { Text(option.label) }, onClick = { penaltyMode = option; penaltyMenu = false }) }
                         }
                     }
-                    EditorField(if (penaltyMode == PenaltyMode.Flat) "Penalty amount per overdue installment" else "Penalty percentage (%)", penaltyRate) { penaltyRate = it }
+                    EditorField(if (penaltyMode == PenaltyMode.Flat) "Penalty amount per overdue installment *" else "Penalty percentage (%) *", penaltyRate) { penaltyRate = it }
                 }
                 if (preview.isNotEmpty()) {
                     val total = preview.sumOf { it.total }
@@ -326,7 +327,7 @@ internal fun PenaltyBalanceDialog(currentBalance: Double, onDismiss: () -> Unit,
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Enter the current penalty balance for this loan. Payments will apply to it before interest and principal.", style = MaterialTheme.typography.bodySmall)
-                EditorField("Penalty balance", value) { value = it }
+                EditorField("Penalty balance *", value) { value = it }
             }
         },
         confirmButton = { Button(onClick = { if (amount != null) onSave(roundMoney(amount)) }, enabled = amount != null && amount >= 0) { Text("Save balance") } },
@@ -348,15 +349,15 @@ internal fun ReleaseFundsDialog(loan: Loan, onDismiss: () -> Unit, onSave: (Stri
         title = { Text("Record release of funds") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                DatePickerField("Release date", date) { date = it }
-                EditorField("Amount released", amount) { amount = it }
+                DatePickerField("Release date *", date) { date = it }
+                EditorField("Amount released *", amount) { amount = it }
                 androidx.compose.foundation.layout.Box {
-                    OutlinedButton(onClick = { methodMenu = true }) { Text("$method  ▾") }
+                    OutlinedButton(onClick = { methodMenu = true }) { Text("Method *: $method  ▾") }
                     DropdownMenu(expanded = methodMenu, onDismissRequest = { methodMenu = false }) {
                         listOf("Cash", "Bank transfer", "Mobile wallet", "Check").forEach { option -> DropdownMenuItem(text = { Text(option) }, onClick = { method = option; methodMenu = false }) }
                     }
                 }
-                EditorField("Reference number", reference) { reference = it }
+                EditorField("Reference number *", reference) { reference = it }
             }
         },
         confirmButton = { Button(onClick = { if (valid) onSave(date, parsedAmount!!, method, reference.trim()) }, enabled = valid) { Text("Save release") } },

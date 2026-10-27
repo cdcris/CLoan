@@ -119,15 +119,15 @@ struct PaymentEditor: View {
     var body: some View {
         NavigationStack {
             Form {
-                Picker("Loan", selection: $loanId) {
+                Picker("Loan *", selection: $loanId) {
                     ForEach(loans, id: \.id) { loan in
                         Text("Loan #\(loan.id) · \(money(loan.principal))").tag(loan.id)
                     }
                 }
-                TextField("Amount", text: $amount).keyboardType(.decimalPad)
-                TextField("Date (YYYY-MM-DD)", text: $date)
-                TextField("Method", text: $method)
-                TextField("Reference", text: $reference)
+                TextField("Amount *", text: $amount).keyboardType(.decimalPad)
+                TextField("Date (YYYY-MM-DD) *", text: $date)
+                TextField("Method *", text: $method)
+                TextField("Reference *", text: $reference)
             }
             .navigationTitle(existing == nil ? "Record payment" : "Edit payment")
             .toolbar {

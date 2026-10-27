@@ -90,7 +90,7 @@ internal fun SettingsManagement(currentRule: PenaltyRule, onRuleChange: (Penalty
                 PenaltyMode.entries.forEach { option -> DropdownMenuItem(text = { Text(option.label) }, onClick = { mode = option; menuExpanded = false }) }
             }
         }
-        EditorField(if (mode == PenaltyMode.Flat) "Flat penalty per installment (₱)" else "Penalty rate (%)", rate) { rate = it }
+        EditorField(if (mode == PenaltyMode.Flat) "Flat penalty per installment (₱) *" else "Penalty rate (%) *", rate) { rate = it }
         Button(onClick = { if (parsedRate != null && parsedRate >= 0) onRuleChange(PenaltyRule(mode, parsedRate)) }, enabled = parsedRate != null && parsedRate >= 0) { Text("Save default rule") }
         Text("A penalty is assessed once, the day after an installment is due, based on the unpaid installment balance at that point. Payments are applied to penalty, then due interest, then principal.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
@@ -212,7 +212,9 @@ internal fun ClientCard(client: Client, onEdit: () -> Unit, onArchive: () -> Uni
                 StatusBadge(client.status)
             }
             Spacer(Modifier.height(12.dp))
-            Text(client.employerIncome, style = MaterialTheme.typography.bodyMedium)
+            if (client.emergencyContactName.isNotBlank() || client.emergencyContactNumber.isNotBlank()) {
+                Text("Emergency contact: ${client.emergencyContactName} · ${client.emergencyContactNumber}", style = MaterialTheme.typography.bodyMedium)
+            }
             Text(client.address, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             if (client.documents.isNotEmpty()) {
                 Spacer(Modifier.height(8.dp))
@@ -243,8 +245,8 @@ internal fun ClientEditorDialog(client: Client?, onDismiss: () -> Unit, onSave: 
     var birthdate by remember(client) { mutableStateOf(client?.birthdate.orEmpty()) }
     var contact by remember(client) { mutableStateOf(client?.contactNumber.orEmpty()) }
     var address by remember(client) { mutableStateOf(client?.address.orEmpty()) }
-    var employer by remember(client) { mutableStateOf(client?.employerIncome.orEmpty()) }
-    var emergency by remember(client) { mutableStateOf(client?.emergencyContact.orEmpty()) }
+    var emergencyName by remember(client) { mutableStateOf(client?.emergencyContactName.orEmpty()) }
+    var emergencyNumber by remember(client) { mutableStateOf(client?.emergencyContactNumber.orEmpty()) }
     var status by remember(client) { mutableStateOf(client?.status ?: ClientStatus.Active) }
     val documents = remember(client) { mutableStateListOf<String>().apply { addAll(client?.documents.orEmpty()) } }
     var newDocument by remember { mutableStateOf("") }
@@ -256,12 +258,12 @@ internal fun ClientEditorDialog(client: Client?, onDismiss: () -> Unit, onSave: 
         text = {
             Column(Modifier.fillMaxWidth().height(500.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Personal details", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-                EditorField("Full name", name) { name = it }
+                EditorField("Full name *", name) { name = it }
                 DatePickerField("Birthdate", birthdate) { birthdate = it }
-                EditorField("Contact number", contact) { contact = it }
+                EditorField("Contact number *", contact) { contact = it }
                 EditorField("Address", address) { address = it }
-                EditorField("Employer and monthly income", employer) { employer = it }
-                EditorField("Emergency contact name and number", emergency) { emergency = it }
+                EditorField("Emergency contact name", emergencyName) { emergencyName = it }
+                EditorField("Emergency contact number", emergencyNumber) { emergencyNumber = it }
                 Text("Client status", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                 androidx.compose.foundation.layout.Box {
                     OutlinedButton(onClick = { statusMenuOpen = true }) { Text("${status.label}  ▾") }
@@ -269,7 +271,7 @@ internal fun ClientEditorDialog(client: Client?, onDismiss: () -> Unit, onSave: 
                         ClientStatus.entries.forEach { option -> DropdownMenuItem(text = { Text(option.label) }, onClick = { status = option; statusMenuOpen = false }) }
                     }
                 }
-                Text("ID photos and documents (optional)", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                Text("ID photos and documents", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                 Text("You can save the client without attaching documents.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 if (documents.isEmpty()) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -288,7 +290,7 @@ internal fun ClientEditorDialog(client: Client?, onDismiss: () -> Unit, onSave: 
         },
         confirmButton = {
             Button(onClick = {
-                onSave(Client(client?.id ?: 0, name.trim(), birthdate.trim(), contact.trim(), address.trim(), employer.trim(), emergency.trim(), status, documents.toList(), client?.archived ?: false))
+                onSave(Client(client?.id ?: 0, name.trim(), birthdate.trim(), contact.trim(), address.trim(), emergencyName.trim(), emergencyNumber.trim(), status, documents.toList(), client?.archived ?: false))
             }, enabled = name.isNotBlank() && contact.isNotBlank()) { Text("Save client") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },

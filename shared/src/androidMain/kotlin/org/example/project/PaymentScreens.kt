@@ -204,15 +204,16 @@ internal fun PaymentEditorDialog(loans: List<Loan>, payment: Payment?, onDismiss
                         eligibleLoans.forEach { option -> DropdownMenuItem(text = { Text("Loan #${option.id} · ${money(option.principal)}") }, onClick = { loanId = option.id; loanMenu = false }) }
                     }
                 }
-                EditorField("Amount", amount) { amount = it }
-                DatePickerField("Payment date", date) { date = it }
+                Text("Loan *", style = MaterialTheme.typography.labelMedium)
+                EditorField("Amount *", amount) { amount = it }
+                DatePickerField("Payment date *", date) { date = it }
                 androidx.compose.foundation.layout.Box {
                     OutlinedButton(onClick = { methodMenu = true }) { Text("$method  ▾") }
                     DropdownMenu(expanded = methodMenu, onDismissRequest = { methodMenu = false }) {
                         listOf("Cash", "Bank transfer", "Mobile wallet", "Check").forEach { option -> DropdownMenuItem(text = { Text(option) }, onClick = { method = option; methodMenu = false }) }
                     }
                 }
-                EditorField("Reference number", reference) { reference = it }
+                EditorField("Reference number *", reference) { reference = it }
                 Text("Payments apply to penalties first, then due interest, then outstanding principal.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         },
@@ -230,7 +231,7 @@ internal fun VoidPaymentDialog(payment: Payment, onDismiss: () -> Unit, onVoid: 
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Payment ${money(payment.amount)} · Ref ${payment.reference}")
-                OutlinedTextField(value = reason, onValueChange = { reason = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Reason for voiding") })
+                OutlinedTextField(value = reason, onValueChange = { reason = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Reason for voiding *") })
             }
         },
         confirmButton = { Button(onClick = { if (reason.isNotBlank()) onVoid(reason.trim()) }, enabled = reason.isNotBlank()) { Text("Void payment") } },

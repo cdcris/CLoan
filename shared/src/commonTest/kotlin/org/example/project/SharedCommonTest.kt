@@ -42,6 +42,18 @@ class SharedCommonTest {
         assertEquals(fields, decodeFields(encodeFields(fields)))
     }
 
+    @Test
+    fun clientEncodingPersistsSeparatedEmergencyContactAndReadsLegacyPayload() {
+        val client = Client(1, "Alex", "1990-01-01", "555-0100", "Address", "Sam", "555-0101", ClientStatus.Active)
+
+        assertEquals(client, decodeClient(client.id, encodeClient(client)))
+
+        val legacyPayload = encodeFields(listOf("Alex", "1990-01-01", "555-0100", "Address", "Employer info", "Sam · 555-0101", "Active", "", "false"))
+        val migrated = decodeClient(1, legacyPayload)
+        assertEquals("Sam · 555-0101", migrated.emergencyContactName)
+        assertEquals("", migrated.emergencyContactNumber)
+    }
+
     private fun testLoan() = Loan(
         id = 1,
         clientId = 1,

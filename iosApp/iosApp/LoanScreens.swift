@@ -117,7 +117,7 @@ struct LoanDetailsScreen: View {
             }
             .navigationTitle("Loan #\(loan.id)")
             .alert("Update penalty balance", isPresented: $showingPenaltyEditor) {
-                TextField("Balance", text: $penaltyValue).keyboardType(.decimalPad)
+                TextField("Balance *", text: $penaltyValue).keyboardType(.decimalPad)
                 Button("Save") {
                     if let balance = Double(penaltyValue), balance >= 0 {
                         store.viewModel.updateLoanPenaltyBalance(loanId: loanId, balance: balance)
@@ -176,13 +176,13 @@ struct LoanEditor: View {
     var body: some View {
         NavigationStack {
             Form {
-                Picker("Client", selection: $clientId) {
+                Picker("Client *", selection: $clientId) {
                     ForEach(clients, id: \.id) { client in Text(client.name).tag(client.id) }
                 }
-                TextField("Principal", text: $principal).keyboardType(.decimalPad)
-                TextField("Annual interest rate (%)", text: $annualRate).keyboardType(.decimalPad)
-                TextField("Number of payments", text: $term).keyboardType(.numberPad)
-                TextField("Start date (YYYY-MM-DD)", text: $startDate)
+                TextField("Principal *", text: $principal).keyboardType(.decimalPad)
+                TextField("Annual interest rate (%) *", text: $annualRate).keyboardType(.decimalPad)
+                TextField("Number of payments *", text: $term).keyboardType(.numberPad)
+                TextField("Start date (YYYY-MM-DD) *", text: $startDate)
                 Picker("Frequency", selection: $frequency) {
                     ForEach(["Weekly", "Semi-monthly", "Monthly"], id: \.self) { Text($0) }
                 }
@@ -190,7 +190,7 @@ struct LoanEditor: View {
                     ForEach(["Default", "Flat amount per overdue installment", "Percentage of unpaid installment"], id: \.self) { Text($0) }
                 }
                 if penaltyMode != "Default" {
-                    TextField(penaltyMode == "Flat amount per overdue installment" ? "Penalty amount" : "Penalty rate (%)", text: $penaltyRate)
+                    TextField(penaltyMode == "Flat amount per overdue installment" ? "Penalty amount *" : "Penalty rate (%) *", text: $penaltyRate)
                         .keyboardType(.decimalPad)
                 }
             }
@@ -231,9 +231,9 @@ struct ReleaseEditor: View {
     var body: some View {
         NavigationStack {
             Form {
-                TextField("Release date", text: $date)
-                TextField("Release amount", text: $amount).keyboardType(.decimalPad)
-                TextField("Method", text: $method)
+                TextField("Release date *", text: $date)
+                TextField("Release amount *", text: $amount).keyboardType(.decimalPad)
+                TextField("Method *", text: $method)
                 TextField("Reference", text: $reference)
             }
             .navigationTitle("Record release")

@@ -40,8 +40,8 @@ final class AppStore: ObservableObject {
         birthdate: String,
         contact: String,
         address: String,
-        employerIncome: String,
-        emergencyContact: String,
+        emergencyContactName: String,
+        emergencyContactNumber: String,
         documents: String,
         status: String
     ) {
@@ -51,8 +51,8 @@ final class AppStore: ObservableObject {
             birthdate: birthdate,
             contactNumber: contact,
             address: address,
-            employerIncome: employerIncome,
-            emergencyContact: emergencyContact,
+            emergencyContactName: emergencyContactName,
+            emergencyContactNumber: emergencyContactNumber,
             documentsText: documents,
             statusLabel: status
         )

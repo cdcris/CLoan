@@ -18,7 +18,7 @@ struct SettingsScreen: View {
                 Picker("Default penalty", selection: $mode) {
                     ForEach(["Flat amount per overdue installment", "Percentage of unpaid installment"], id: \.self) { Text($0) }
                 }
-                TextField(mode == "Flat amount per overdue installment" ? "Amount per installment" : "Rate (%)", text: $rate)
+                TextField(mode == "Flat amount per overdue installment" ? "Amount per installment *" : "Rate (%) *", text: $rate)
                     .keyboardType(.decimalPad)
                 Button("Save default rule") {
                     guard let value = Double(rate), value >= 0 else { return }

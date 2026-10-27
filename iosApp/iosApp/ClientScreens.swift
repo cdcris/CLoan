@@ -49,7 +49,7 @@ struct ClientScreen: View {
                 ClientEditor(existing: editingClient) { values in
                     store.saveClient(existing: editingClient, name: values.name, birthdate: values.birthdate,
                                      contact: values.contact, address: values.address,
-                                     employerIncome: values.employerIncome, emergencyContact: values.emergencyContact,
+                                     emergencyContactName: values.emergencyContactName, emergencyContactNumber: values.emergencyContactNumber,
                                      documents: values.documents, status: values.status)
                 }
             }
@@ -63,8 +63,8 @@ struct ClientEditor: View {
         let birthdate: String
         let contact: String
         let address: String
-        let employerIncome: String
-        let emergencyContact: String
+        let emergencyContactName: String
+        let emergencyContactNumber: String
         let documents: String
         let status: String
     }
@@ -76,8 +76,8 @@ struct ClientEditor: View {
     @State private var birthdate: String
     @State private var contact: String
     @State private var address: String
-    @State private var employerIncome: String
-    @State private var emergencyContact: String
+    @State private var emergencyContactName: String
+    @State private var emergencyContactNumber: String
     @State private var documents: String
     @State private var status: String
 
@@ -88,8 +88,8 @@ struct ClientEditor: View {
         _birthdate = State(initialValue: existing?.birthdate ?? "")
         _contact = State(initialValue: existing?.contactNumber ?? "")
         _address = State(initialValue: existing?.address ?? "")
-        _employerIncome = State(initialValue: existing?.employerIncome ?? "")
-        _emergencyContact = State(initialValue: existing?.emergencyContact ?? "")
+        _emergencyContactName = State(initialValue: existing?.emergencyContactName ?? "")
+        _emergencyContactNumber = State(initialValue: existing?.emergencyContactNumber ?? "")
         _documents = State(initialValue: existing?.documents.joined(separator: "\n") ?? "")
         _status = State(initialValue: existing?.status.label ?? "Active")
     }
@@ -97,13 +97,14 @@ struct ClientEditor: View {
     var body: some View {
         NavigationStack {
             Form {
-                TextField("Full name", text: $name)
+                TextField("Full name *", text: $name)
                 TextField("Birthdate", text: $birthdate)
-                TextField("Contact number", text: $contact)
+                TextField("Contact number *", text: $contact)
                     .keyboardType(.phonePad)
                 TextField("Address", text: $address, axis: .vertical)
-                TextField("Employer / income", text: $employerIncome)
-                TextField("Emergency contact", text: $emergencyContact)
+                TextField("Emergency contact name", text: $emergencyContactName)
+                TextField("Emergency contact number", text: $emergencyContactNumber)
+                    .keyboardType(.phonePad)
                 TextField("Documents (one per line)", text: $documents, axis: .vertical)
                 Picker("Status", selection: $status) {
                     ForEach(["Active", "Inactive", "Blacklisted"], id: \.self) { Text($0) }
@@ -115,7 +116,7 @@ struct ClientEditor: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
                         onSave(Values(name: name, birthdate: birthdate, contact: contact, address: address,
-                                      employerIncome: employerIncome, emergencyContact: emergencyContact,
+                                      emergencyContactName: emergencyContactName, emergencyContactNumber: emergencyContactNumber,
                                       documents: documents, status: status))
                         dismiss()
                     }
