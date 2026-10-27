@@ -30,6 +30,11 @@ data class LoanType(
     val customDurationDays: Int = 30,
 )
 
+enum class LoanOrigin(val label: String) {
+    Renewal("Renewal"),
+    TopUp("Top-up"),
+}
+
 data class Loan(
     val id: Int,
     val clientId: Int,
@@ -42,6 +47,11 @@ data class Loan(
     val releaseMethod: String = "",
     val releaseReference: String = "",
     val penaltyBalance: Double = 0.0,
+    val sourceLoanId: Int? = null,
+    val origin: LoanOrigin? = null,
+    val carriedBalance: Double = 0.0,
+    val cashAdvanced: Double = 0.0,
+    val successorLoanId: Int? = null,
 )
 
 data class Installment(val number: Int, val dueDate: String, val principal: Double, val interest: Double) {

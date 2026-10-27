@@ -62,6 +62,28 @@ class SharedCommonTest {
     }
 
     @Test
+    fun earlyPaymentReducesBalanceAndPayoffIncludesRemainingContractInterest() {
+        val loan = testLoan()
+        val earlyPayment = Payment(1, loan.id, 20.0, "2026-09-15", "Cash", "EARLY", allocatedPrincipal = 20.0)
+
+        assertEquals(100.0, remainingLoanBalance(loan, listOf(earlyPayment), "2026-09-15", PenaltyRule(PenaltyMode.Percentage, 0.0)))
+        assertEquals(101.2, loanPayoffBalance(loan, listOf(earlyPayment), "2026-09-15", PenaltyRule(PenaltyMode.Percentage, 0.0)))
+    }
+
+    @Test
+    fun renewalLoanRelationshipPersists() {
+        val renewed = testLoan().copy(
+            sourceLoanId = 4,
+            origin = LoanOrigin.TopUp,
+            carriedBalance = 80.0,
+            cashAdvanced = 20.0,
+            successorLoanId = 7,
+        )
+
+        assertEquals(renewed, decodeLoan(renewed.id, encodeLoan(renewed)))
+    }
+
+    @Test
     fun clientEncodingPersistsSeparatedEmergencyContactAndReadsLegacyPayload() {
         val client = Client(1, "Alex", "1990-01-01", "555-0100", "Address", "Sam", "555-0101", ClientStatus.Active)
 

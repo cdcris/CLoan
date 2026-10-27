@@ -79,6 +79,7 @@ fun App(database: Database) {
                     onSaveLoan = appViewModel::saveLoan,
                     onUpdateLoan = appViewModel::updateLoan,
                     onReleaseLoan = appViewModel::releaseLoan,
+                    onRenewOrTopUpLoan = appViewModel::renewOrTopUpLoan,
                     modifier = Modifier.fillMaxSize().padding(contentPadding),
                 )
             } else if (selectedIndex == 3) {

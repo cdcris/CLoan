@@ -199,6 +199,16 @@ internal fun remainingLoanBalance(loan: Loan, payments: List<Payment>, asOfDate:
     return roundMoney(principalLeft + interestLeft + penaltyLeft)
 }
 
+internal fun loanPayoffBalance(loan: Loan, payments: List<Payment>, asOfDate: String, defaultPenaltyRule: PenaltyRule): Double {
+    val valid = payments.filter { it.loanId == loan.id && it.voidReason.isBlank() && it.date <= asOfDate }
+    val schedule = createSchedule(loan.principal, loan.loanType, loan.startDate)
+    val principalLeft = (loan.principal - valid.sumOf { it.allocatedPrincipal }).coerceAtLeast(0.0)
+    val interestLeft = (schedule.sumOf { it.interest } - valid.sumOf { it.allocatedInterest }).coerceAtLeast(0.0)
+    val assessedPenalty = installmentStatuses(loan, payments, asOfDate, defaultPenaltyRule).sumOf { it.penalty }
+    val penaltyLeft = (loan.penaltyBalance + assessedPenalty - valid.sumOf { it.allocatedPenalty }).coerceAtLeast(0.0)
+    return roundMoney(principalLeft + interestLeft + penaltyLeft)
+}
+
 internal fun loansDueOn(loans: List<Loan>, payments: List<Payment>, start: String, end: String): List<Loan> = loans.filter { loan ->
     val eligible = loan.status == LoanStatus.Released || loan.status == LoanStatus.Active || loan.status == LoanStatus.Overdue
     if (!eligible) return@filter false

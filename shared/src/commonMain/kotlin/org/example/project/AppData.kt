@@ -54,15 +54,19 @@ internal fun decodeClient(id: Int, payload: String): Client {
 }
 
 internal fun encodeLoan(value: Loan) = encodeFields(listOf(
-    "v3", value.clientId.toString(), value.principal.toString(), value.loanType.duration.name,
+    "v5", value.clientId.toString(), value.principal.toString(), value.loanType.duration.name,
     value.loanType.interestRate.toString(), value.loanType.penaltyRule.mode.name, value.loanType.penaltyRule.rate.toString(),
     value.loanType.customDurationDays.toString(), value.startDate, value.status.name, value.releaseDate,
     value.releaseAmount?.toString().orEmpty(), value.releaseMethod, value.releaseReference, value.penaltyBalance.toString(),
+    value.sourceLoanId?.toString().orEmpty(), value.origin?.name.orEmpty(), value.carriedBalance.toString(), value.cashAdvanced.toString(),
+    value.successorLoanId?.toString().orEmpty(),
 ))
 
 internal fun decodeLoan(id: Int, payload: String): Loan {
     val fields = decodeFields(payload)
-    if (fields.firstOrNull() == "v3") {
+    if (fields.firstOrNull() == "v5" || fields.firstOrNull() == "v4" || fields.firstOrNull() == "v3") {
+        val hasRelationship = fields[0] == "v5" || fields[0] == "v4"
+        val hasSuccessor = fields[0] == "v5"
         val loanType = LoanType(
             duration = LoanDuration.valueOf(fields[3]),
             interestRate = fields[4].toDouble(),
@@ -70,7 +74,12 @@ internal fun decodeLoan(id: Int, payload: String): Loan {
             customDurationDays = fields[7].toInt(),
         )
         return Loan(id, fields[1].toInt(), fields[2].toDouble(), loanType, fields[8], LoanStatus.valueOf(fields[9]),
-            fields[10], fields[11].toDoubleOrNull(), fields[12], fields[13], fields[14].toDouble())
+            fields[10], fields[11].toDoubleOrNull(), fields[12], fields[13], fields[14].toDouble(),
+            if (hasRelationship) fields.getOrNull(15)?.toIntOrNull() else null,
+            if (hasRelationship) fields.getOrNull(16)?.takeIf { it.isNotEmpty() }?.let(LoanOrigin::valueOf) else null,
+            if (hasRelationship) fields.getOrNull(17)?.toDoubleOrNull() ?: 0.0 else 0.0,
+            if (hasRelationship) fields.getOrNull(18)?.toDoubleOrNull() ?: 0.0 else 0.0,
+            if (hasSuccessor) fields.getOrNull(19)?.toIntOrNull() else null)
     }
     val penaltyMode = fields[12].takeIf { it.isNotEmpty() }?.let(PenaltyMode::valueOf) ?: PenaltyMode.Percentage
     val penaltyRule = PenaltyRule(penaltyMode, fields.getOrNull(13)?.toDoubleOrNull() ?: 5.0)

@@ -186,11 +186,10 @@ internal fun PaymentEditorDialog(loans: List<Loan>, payment: Payment?, onDismiss
     var amount by remember(payment) { mutableStateOf(payment?.amount?.toString().orEmpty()) }
     var date by remember(payment) { mutableStateOf(payment?.date ?: "2026-10-25") }
     var method by remember(payment) { mutableStateOf(payment?.method ?: "Cash") }
-    var reference by remember(payment) { mutableStateOf(payment?.reference.orEmpty()) }
     var loanMenu by remember { mutableStateOf(false) }
     var methodMenu by remember { mutableStateOf(false) }
     val parsedAmount = amount.toDoubleOrNull()
-    val valid = eligibleLoans.any { it.id == loanId } && parsedAmount != null && parsedAmount > 0 && parseDate(date) != null && reference.isNotBlank()
+    val valid = eligibleLoans.any { it.id == loanId } && parsedAmount != null && parsedAmount > 0 && parseDate(date) != null
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (payment == null) "Record payment" else "Edit payment") },
@@ -213,11 +212,11 @@ internal fun PaymentEditorDialog(loans: List<Loan>, payment: Payment?, onDismiss
                         listOf("Cash", "Bank transfer", "Mobile wallet", "Check").forEach { option -> DropdownMenuItem(text = { Text(option) }, onClick = { method = option; methodMenu = false }) }
                     }
                 }
-                EditorField("Reference number *", reference) { reference = it }
-                Text("Payments apply to penalties first, then due interest, then outstanding principal.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(if (payment == null) "A reference number will be generated automatically." else "Reference: ${payment.reference}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("You can pay before the due date. Early payments reduce the outstanding principal immediately; payments then cover overdue penalties, due interest, and principal.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         },
-        confirmButton = { Button(onClick = { if (valid) onSave(Payment(payment?.id ?: 0, loanId, parsedAmount!!, date, method, reference.trim())) }, enabled = valid) { Text("Save payment") } },
+        confirmButton = { Button(onClick = { if (valid) onSave(Payment(payment?.id ?: 0, loanId, parsedAmount, date, method, "")) }, enabled = valid) { Text("Save payment") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
 }

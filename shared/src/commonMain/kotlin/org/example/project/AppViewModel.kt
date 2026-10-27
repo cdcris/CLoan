@@ -135,7 +135,7 @@ class AppViewModel(private val database: Database) : ViewModel() {
         persistLoanChanges(_uiState.value, updatedLoans, reallocateLoanId = loan.id)
     }
 
-    fun releaseLoan(loanId: Int, date: String, amount: Double, method: String, reference: String) {
+    fun releaseLoan(loanId: Int, date: String, amount: Double, method: String) {
         val updatedLoans = _uiState.value.loans.map { loan ->
             if (loan.id == loanId) {
                 loan.copy(
@@ -143,7 +143,7 @@ class AppViewModel(private val database: Database) : ViewModel() {
                     releaseDate = date,
                     releaseAmount = amount,
                     releaseMethod = method,
-                    releaseReference = reference,
+                    releaseReference = recordReference("REL", loan.id),
                 )
             } else {
                 loan
@@ -152,12 +152,43 @@ class AppViewModel(private val database: Database) : ViewModel() {
         persistLoanChanges(_uiState.value, updatedLoans)
     }
 
+    fun renewOrTopUpLoan(loanId: Int, cashAdvance: Double, date: String): Int? {
+        val state = _uiState.value
+        val source = state.loans.firstOrNull { it.id == loanId } ?: return null
+        if (source.status == LoanStatus.Cancelled || source.status == LoanStatus.FullyPaid || cashAdvance < 0 || parseDate(date) == null) return null
+        val carriedBalance = loanPayoffBalance(source, state.payments, date, state.defaultPenaltyRule)
+        if (carriedBalance <= 0.009) return null
+        val nextId = (state.loans.maxOfOrNull { it.id } ?: 0) + 1
+        val origin = if (cashAdvance > 0.009) LoanOrigin.TopUp else LoanOrigin.Renewal
+        val updatedSource = source.copy(status = LoanStatus.FullyPaid, successorLoanId = nextId)
+        val nextLoan = Loan(
+            id = nextId,
+            clientId = source.clientId,
+            principal = roundMoney(carriedBalance + cashAdvance),
+            loanType = source.loanType,
+            startDate = date,
+            status = LoanStatus.Active,
+            releaseDate = date,
+            releaseAmount = roundMoney(cashAdvance),
+            releaseMethod = if (origin == LoanOrigin.Renewal) "Loan renewal" else "Loan top-up",
+            releaseReference = recordReference(if (origin == LoanOrigin.Renewal) "REN" else "TOP", nextId),
+            sourceLoanId = source.id,
+            origin = origin,
+            carriedBalance = roundMoney(carriedBalance),
+            cashAdvanced = roundMoney(cashAdvance),
+        )
+        val updatedLoans = state.loans.map { if (it.id == source.id) updatedSource else it } + nextLoan
+        persistLoanChanges(state, updatedLoans)
+        return nextId
+    }
+
     fun savePayment(payment: Payment, existingId: Int? = null) {
         val state = _uiState.value
         val updatedPayments = if (existingId == null) {
-            state.payments + payment.copy(id = (state.payments.maxOfOrNull { it.id } ?: 0) + 1)
+            val nextId = (state.payments.maxOfOrNull { it.id } ?: 0) + 1
+            state.payments + payment.copy(id = nextId, reference = recordReference("PAY", nextId))
         } else {
-            state.payments.map { existing -> if (existing.id == existingId) payment.copy(id = existing.id) else existing }
+            state.payments.map { existing -> if (existing.id == existingId) payment.copy(id = existing.id, reference = existing.reference) else existing }
         }
         persistPaymentChanges(state, updatedPayments, listOfNotNull(existingId?.let { state.payments.firstOrNull { p -> p.id == it }?.loanId }, payment.loanId))
     }
@@ -277,4 +308,6 @@ class AppViewModel(private val database: Database) : ViewModel() {
         _uiState.value = previousState.copy(payments = payments)
         database.replaceEntities("payments", payments, Payment::id, ::encodePayment)
     }
+
+    private fun recordReference(prefix: String, id: Int): String = "$prefix-${id.toString().padStart(6, '0')}"
 }

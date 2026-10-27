@@ -42,7 +42,8 @@ internal fun LoanManagement(
     defaultPenaltyRule: PenaltyRule,
     onSaveLoan: (Loan, Int?) -> Unit,
     onUpdateLoan: (Loan) -> Unit,
-    onReleaseLoan: (Int, String, Double, String, String) -> Unit,
+    onReleaseLoan: (Int, String, Double, String) -> Unit,
+    onRenewOrTopUpLoan: (Int, Double, String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var showCreate by remember { mutableStateOf(false) }
@@ -108,6 +109,10 @@ internal fun LoanManagement(
             onUpdate = onUpdateLoan,
             onEdit = { editingLoan = currentLoan; selectedLoan = null },
             onRelease = { releasingLoan = currentLoan; selectedLoan = null },
+            onRenewOrTopUp = { sourceId, cashAdvance, date ->
+                onRenewOrTopUpLoan(sourceId, cashAdvance, date)
+                selectedLoan = null
+            },
         )
     }
 
@@ -115,8 +120,8 @@ internal fun LoanManagement(
         ReleaseFundsDialog(
             loan = loan,
             onDismiss = { releasingLoan = null },
-            onSave = { date, amount, method, reference ->
-                onReleaseLoan(loan.id, date, amount, method, reference)
+            onSave = { date, amount, method ->
+                onReleaseLoan(loan.id, date, amount, method)
                 releasingLoan = null
             },
         )
@@ -225,7 +230,7 @@ internal fun LoanEditorDialog(clients: List<Client>, loan: Loan?, defaultPenalty
                 }
             }
         },
-        confirmButton = { Button(onClick = { if (valid) onSave(Loan(loan?.id ?: 0, clientId, computedPrincipal!!, loanType!!, startDate, loan?.status ?: LoanStatus.Pending, penaltyBalance = loan?.penaltyBalance ?: 0.0)) }, enabled = valid) { Text("Save loan") } },
+        confirmButton = { Button(onClick = { if (valid) onSave(Loan(loan?.id ?: 0, clientId, computedPrincipal, loanType!!, startDate, loan?.status ?: LoanStatus.Pending, penaltyBalance = loan?.penaltyBalance ?: 0.0)) }, enabled = valid) { Text("Save loan") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
 }
@@ -240,9 +245,11 @@ internal fun LoanDetailsDialog(
     onUpdate: (Loan) -> Unit,
     onEdit: () -> Unit,
     onRelease: () -> Unit,
+    onRenewOrTopUp: (Int, Double, String) -> Unit,
 ) {
     val schedule = installmentStatuses(loan, payments, currentDateIso(), defaultPenaltyRule)
     var showPenaltyEditor by remember(loan.id) { mutableStateOf(false) }
+    var showRenewalDialog by remember(loan.id) { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Loan details") },
@@ -260,6 +267,11 @@ internal fun LoanDetailsDialog(
                 val penaltyOutstanding = manualPenaltyOutstanding + schedule.sumOf { it.penaltyOutstanding }
                 Text("Penalty balance: ${money(penaltyOutstanding)} (manual ${money(manualPenaltyOutstanding)} · installment ${money(schedule.sumOf { it.penaltyOutstanding })})", style = MaterialTheme.typography.bodyMedium)
                 Text("Start date: ${loan.startDate}", style = MaterialTheme.typography.bodyMedium)
+                Text("Current payoff balance: ${money(loanPayoffBalance(loan, payments, currentDateIso(), defaultPenaltyRule))}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                if (loan.sourceLoanId != null && loan.origin != null) {
+                    Text("${loan.origin.label} from loan #${loan.sourceLoanId} · carried ${money(loan.carriedBalance)} · cash advanced ${money(loan.cashAdvanced)}", style = MaterialTheme.typography.bodySmall)
+                }
+                if (loan.successorLoanId != null) Text("Renewed into loan #${loan.successorLoanId}", style = MaterialTheme.typography.bodySmall)
                 Text("Total scheduled: ${money(schedule.sumOf { it.installment.total })}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                 if (loan.releaseDate.isNotBlank()) {
                     Text("Released ${loan.releaseDate} · ${money(loan.releaseAmount ?: 0.0)} · ${loan.releaseMethod} · Ref ${loan.releaseReference}", style = MaterialTheme.typography.bodySmall)
@@ -276,6 +288,7 @@ internal fun LoanDetailsDialog(
                 if (loan.status == LoanStatus.Active || loan.status == LoanStatus.Overdue) {
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         TextButton(onClick = { onUpdate(loan.copy(status = LoanStatus.FullyPaid)) }) { Text("Mark fully paid") }
+                        TextButton(onClick = { showRenewalDialog = true }) { Text("Renew / top up") }
                     }
                 }
                 if (loan.status != LoanStatus.Cancelled && loan.status != LoanStatus.FullyPaid) {
@@ -311,6 +324,61 @@ internal fun LoanDetailsDialog(
             },
         )
     }
+
+    if (showRenewalDialog) {
+        RenewalOrTopUpDialog(
+            sourceLoan = loan,
+            payments = payments,
+            defaultPenaltyRule = defaultPenaltyRule,
+            onDismiss = { showRenewalDialog = false },
+            onSave = { cashAdvance, date ->
+                onRenewOrTopUp(loan.id, cashAdvance, date)
+                showRenewalDialog = false
+            },
+        )
+    }
+}
+
+@Composable
+internal fun RenewalOrTopUpDialog(
+    sourceLoan: Loan,
+    payments: List<Payment>,
+    defaultPenaltyRule: PenaltyRule,
+    onDismiss: () -> Unit,
+    onSave: (Double, String) -> Unit,
+) {
+    var cashAdvanceText by remember(sourceLoan.id) { mutableStateOf("0") }
+    var date by remember(sourceLoan.id) { mutableStateOf(currentDateIso()) }
+    val carriedBalance = if (parseDate(date) != null) loanPayoffBalance(sourceLoan, payments, date, defaultPenaltyRule) else 0.0
+    val cashAdvance = cashAdvanceText.toDoubleOrNull()
+    val newPrincipal = cashAdvance?.let { roundMoney(carriedBalance + it) }
+    val newInterest = newPrincipal?.let { roundMoney(it * sourceLoan.loanType.interestRate / 100.0) }
+    val valid = cashAdvance != null && cashAdvance >= 0 && carriedBalance > 0 && parseDate(date) != null
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Renew or top up loan #${sourceLoan.id}") },
+        text = {
+            Column(Modifier.fillMaxWidth().height(460.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("The old payoff balance moves into a new loan. Any extra amount is paid out as cash. The old loan will be marked paid and linked to the new loan.", style = MaterialTheme.typography.bodySmall)
+                Text("Balance carried forward: ${money(carriedBalance)}", style = MaterialTheme.typography.bodyMedium)
+                EditorField("Extra cash to advance (enter 0 to renew only) *", cashAdvanceText) { cashAdvanceText = it }
+                DatePickerField("New loan date *", date) { date = it }
+                Text("A reference number will be generated automatically.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (newPrincipal != null && newInterest != null) {
+                    Text("New principal: ${money(newPrincipal)}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                    Text("New interest (${sourceLoan.loanType.interestRate}%): ${money(newInterest)}", style = MaterialTheme.typography.bodyMedium)
+                    Text("Total scheduled: ${money(newPrincipal + newInterest)} · cash paid to client: ${money(cashAdvance)}", style = MaterialTheme.typography.bodyMedium)
+                    Text("Uses the same ${sourceLoan.loanType.duration.label.lowercase()} loan type and penalty rule as the old loan.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = { if (valid) onSave(cashAdvance, date) }, enabled = valid) {
+                Text(if ((cashAdvance ?: 0.0) > 0) "Confirm top-up" else "Confirm renewal")
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }
 
 @Composable
@@ -332,14 +400,13 @@ internal fun PenaltyBalanceDialog(currentBalance: Double, onDismiss: () -> Unit,
 }
 
 @Composable
-internal fun ReleaseFundsDialog(loan: Loan, onDismiss: () -> Unit, onSave: (String, Double, String, String) -> Unit) {
+internal fun ReleaseFundsDialog(loan: Loan, onDismiss: () -> Unit, onSave: (String, Double, String) -> Unit) {
     var date by remember(loan) { mutableStateOf("2026-10-25") }
     var amount by remember(loan) { mutableStateOf(loan.principal.toString()) }
     var method by remember(loan) { mutableStateOf("Cash") }
-    var reference by remember(loan) { mutableStateOf("") }
     var methodMenu by remember { mutableStateOf(false) }
     val parsedAmount = amount.toDoubleOrNull()
-    val valid = parseDate(date) != null && parsedAmount != null && parsedAmount > 0 && method.isNotBlank() && reference.isNotBlank()
+    val valid = parseDate(date) != null && parsedAmount != null && parsedAmount > 0 && method.isNotBlank()
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Record release of funds") },
@@ -353,10 +420,10 @@ internal fun ReleaseFundsDialog(loan: Loan, onDismiss: () -> Unit, onSave: (Stri
                         listOf("Cash", "Bank transfer", "Mobile wallet", "Check").forEach { option -> DropdownMenuItem(text = { Text(option) }, onClick = { method = option; methodMenu = false }) }
                     }
                 }
-                EditorField("Reference number *", reference) { reference = it }
+                Text("A reference number will be generated automatically.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         },
-        confirmButton = { Button(onClick = { if (valid) onSave(date, parsedAmount!!, method, reference.trim()) }, enabled = valid) { Text("Save release") } },
+        confirmButton = { Button(onClick = { if (valid) onSave(date, parsedAmount, method) }, enabled = valid) { Text("Save release") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
 }
