@@ -91,11 +91,7 @@ fun App(database: Database) {
                     modifier = Modifier.fillMaxSize().padding(contentPadding),
                 )
             } else {
-                SettingsManagement(
-                    currentRule = state.defaultPenaltyRule,
-                    onRuleChange = appViewModel::updateDefaultPenaltyRule,
-                    modifier = Modifier.fillMaxSize().padding(contentPadding),
-                )
+                SettingsManagement(modifier = Modifier.fillMaxSize().padding(contentPadding))
             }
         }
     }

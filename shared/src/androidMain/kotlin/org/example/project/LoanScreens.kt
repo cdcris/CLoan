@@ -131,7 +131,7 @@ internal fun LoanCard(loan: Loan, clientName: String, payments: List<Payment>, d
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(clientName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                    Text("${loan.frequency.label} · ${loan.term} payments · ${loan.annualInterestRate}% p.a.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("${loan.loanType.duration.label} · ${loan.loanType.interestRate}% interest", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 LoanStatusBadge(if (autoOverdue) LoanStatus.Overdue else loan.status)
             }
@@ -165,23 +165,23 @@ internal fun LoanStatusBadge(status: LoanStatus) {
 internal fun LoanEditorDialog(clients: List<Client>, loan: Loan?, defaultPenaltyRule: PenaltyRule, onDismiss: () -> Unit, onSave: (Loan) -> Unit) {
     var clientId by remember(loan) { mutableStateOf(loan?.clientId ?: clients.firstOrNull()?.id ?: 0) }
     var principal by remember(loan) { mutableStateOf(loan?.principal?.toString().orEmpty()) }
-    var rate by remember(loan) { mutableStateOf(loan?.annualInterestRate?.toString().orEmpty()) }
-    var term by remember(loan) { mutableStateOf(loan?.term?.toString().orEmpty()) }
+    var rate by remember(loan) { mutableStateOf(loan?.loanType?.interestRate?.toString().orEmpty()) }
+    var duration by remember(loan) { mutableStateOf(loan?.loanType?.duration ?: LoanDuration.Monthly) }
+    var customDays by remember(loan) { mutableStateOf((loan?.loanType?.customDurationDays ?: 30).toString()) }
     var startDate by remember(loan) { mutableStateOf(loan?.startDate ?: "2026-10-25") }
-    var frequency by remember(loan) { mutableStateOf(loan?.frequency ?: PaymentFrequency.Monthly) }
-    var useLoanPenaltyRule by remember(loan) { mutableStateOf(loan?.penaltyRule != null) }
-    var penaltyMode by remember(loan) { mutableStateOf(loan?.penaltyRule?.mode ?: defaultPenaltyRule.mode) }
-    var penaltyRate by remember(loan) { mutableStateOf((loan?.penaltyRule?.rate ?: defaultPenaltyRule.rate).toString()) }
+    var penaltyMode by remember(loan) { mutableStateOf(loan?.loanType?.penaltyRule?.mode ?: defaultPenaltyRule.mode) }
+    var penaltyRate by remember(loan) { mutableStateOf((loan?.loanType?.penaltyRule?.rate ?: defaultPenaltyRule.rate).toString()) }
     var penaltyMenu by remember { mutableStateOf(false) }
     var clientMenu by remember { mutableStateOf(false) }
-    var frequencyMenu by remember { mutableStateOf(false) }
+    var durationMenu by remember { mutableStateOf(false) }
     val computedPrincipal = principal.toDoubleOrNull()
     val computedRate = rate.toDoubleOrNull()
-    val computedTerm = term.toIntOrNull()
-    val preview = if (computedPrincipal != null && computedRate != null && computedTerm != null && computedPrincipal > 0 && computedRate >= 0 && computedTerm in 1..120) {
-        createSchedule(computedPrincipal, computedRate, computedTerm, startDate, frequency)
+    val computedDays = customDays.toIntOrNull()
+    val loanType = if (computedRate != null && penaltyRate.toDoubleOrNull() != null) LoanType(duration, computedRate, PenaltyRule(penaltyMode, penaltyRate.toDouble()), computedDays ?: 30) else null
+    val preview = if (computedPrincipal != null && loanType != null && computedPrincipal > 0 && computedRate?.let { it >= 0 } == true && (duration != LoanDuration.Custom || computedDays != null && computedDays > 0)) {
+        createSchedule(computedPrincipal, loanType, startDate)
     } else emptyList()
-    val valid = clients.any { it.id == clientId } && computedPrincipal != null && computedPrincipal > 0 && computedRate != null && computedRate >= 0 && computedTerm != null && computedTerm in 1..120 && parseDate(startDate) != null
+    val valid = clients.any { it.id == clientId } && computedPrincipal != null && computedPrincipal > 0 && computedRate != null && computedRate >= 0 && (duration != LoanDuration.Custom || computedDays != null && computedDays > 0) && penaltyRate.toDoubleOrNull()?.let { it >= 0 } == true && parseDate(startDate) != null
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -199,37 +199,33 @@ internal fun LoanEditorDialog(clients: List<Client>, loan: Loan?, defaultPenalty
                 }
                 Text("Client *", style = MaterialTheme.typography.labelMedium)
                 EditorField("Principal amount *", principal) { principal = it }
-                EditorField("Annual interest rate (%) *", rate) { rate = it }
-                EditorField("Term (number of payments, max 120) *", term) { term = it }
-                DatePickerField("Start date *", startDate) { startDate = it }
                 androidx.compose.foundation.layout.Box {
-                    OutlinedButton(onClick = { frequencyMenu = true }) { Text("${frequency.label} payment frequency  ▾") }
-                    DropdownMenu(expanded = frequencyMenu, onDismissRequest = { frequencyMenu = false }) {
-                        PaymentFrequency.entries.forEach { option -> DropdownMenuItem(text = { Text(option.label) }, onClick = { frequency = option; frequencyMenu = false }) }
+                    OutlinedButton(onClick = { durationMenu = true }, modifier = Modifier.fillMaxWidth()) { Text("Loan type: ${duration.label}  ▾") }
+                    DropdownMenu(expanded = durationMenu, onDismissRequest = { durationMenu = false }) {
+                        LoanDuration.entries.forEach { option -> DropdownMenuItem(text = { Text(option.label) }, onClick = { duration = option; durationMenu = false }) }
                     }
                 }
-                Text("Overdue penalty", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-                TextButton(onClick = { useLoanPenaltyRule = !useLoanPenaltyRule }) {
-                    val defaultValue = if (defaultPenaltyRule.mode == PenaltyMode.Flat) money(defaultPenaltyRule.rate) else "${defaultPenaltyRule.rate}%"
-                    Text(if (useLoanPenaltyRule) "Using this loan's custom rule" else "Using default rule (${defaultPenaltyRule.mode.label}: $defaultValue)")
-                }
-                if (useLoanPenaltyRule) {
+                if (duration == LoanDuration.Custom) EditorField("Custom duration (days) *", customDays) { customDays = it }
+                EditorField("Interest (%) for this loan type *", rate) { rate = it }
+                DatePickerField("Start date *", startDate) { startDate = it }
+                Text("Penalty for this loan type", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                run {
                     androidx.compose.foundation.layout.Box {
                         OutlinedButton(onClick = { penaltyMenu = true }, modifier = Modifier.fillMaxWidth()) { Text("${penaltyMode.label}  ▾") }
                         DropdownMenu(expanded = penaltyMenu, onDismissRequest = { penaltyMenu = false }) {
                             PenaltyMode.entries.forEach { option -> DropdownMenuItem(text = { Text(option.label) }, onClick = { penaltyMode = option; penaltyMenu = false }) }
                         }
                     }
-                    EditorField(if (penaltyMode == PenaltyMode.Flat) "Penalty amount per overdue installment *" else "Penalty percentage (%) *", penaltyRate) { penaltyRate = it }
+                    EditorField(if (penaltyMode == PenaltyMode.Flat) "Penalty amount per overdue payment *" else "Penalty percentage (%) *", penaltyRate) { penaltyRate = it }
                 }
                 if (preview.isNotEmpty()) {
                     val total = preview.sumOf { it.total }
-                    Text("Schedule preview · ${preview.size} payments · ${money(total)} total", style = MaterialTheme.typography.labelLarge)
-                    Text("Annual rate is divided across payment periods; principal is evenly amortized and interest declines with the balance.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Schedule preview · ${preview.size} payment · ${money(total)} total", style = MaterialTheme.typography.labelLarge)
+                    Text("Interest is calculated as a percentage of principal for the selected loan type.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         },
-        confirmButton = { Button(onClick = { if (valid) onSave(Loan(loan?.id ?: 0, clientId, computedPrincipal!!, computedRate!!, computedTerm!!, startDate, frequency, loan?.status ?: LoanStatus.Pending, penaltyRule = if (useLoanPenaltyRule) PenaltyRule(penaltyMode, penaltyRate.toDouble()) else null, penaltyBalance = loan?.penaltyBalance ?: 0.0)) }, enabled = valid && (!useLoanPenaltyRule || ((penaltyRate.toDoubleOrNull() ?: -1.0) >= 0.0))) { Text("Save loan") } },
+        confirmButton = { Button(onClick = { if (valid) onSave(Loan(loan?.id ?: 0, clientId, computedPrincipal!!, loanType!!, startDate, loan?.status ?: LoanStatus.Pending, penaltyBalance = loan?.penaltyBalance ?: 0.0)) }, enabled = valid) { Text("Save loan") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
 }
@@ -255,7 +251,7 @@ internal fun LoanDetailsDialog(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(clientName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                        Text("${loan.frequency.label} · ${loan.term} payments · ${loan.annualInterestRate}% p.a.", style = MaterialTheme.typography.bodySmall)
+                        Text("${loan.loanType.duration.label} · ${loan.loanType.interestRate}% interest", style = MaterialTheme.typography.bodySmall)
                     }
                     LoanStatusBadge(if (schedule.any { it.isOverdue }) LoanStatus.Overdue else loan.status)
                 }

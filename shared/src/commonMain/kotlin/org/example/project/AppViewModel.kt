@@ -19,7 +19,7 @@ class AppViewModel(private val database: Database) : ViewModel() {
             clients = database.readEntities("clients", ::decodeClient),
             loans = database.readEntities("loans", ::decodeLoan),
             payments = database.readEntities("payments", ::decodePayment),
-            defaultPenaltyRule = database.readPenaltyRule(),
+            defaultPenaltyRule = PenaltyRule(PenaltyMode.Percentage, 0.0),
         ),
     )
 
@@ -99,33 +99,23 @@ class AppViewModel(private val database: Database) : ViewModel() {
         existingId: Int?,
         clientId: Int,
         principal: Double,
-        annualInterestRate: Double,
-        term: Int,
+        loanType: LoanType,
         startDate: String,
-        frequencyLabel: String,
-        customPenaltyModeLabel: String,
-        customPenaltyRate: Double,
     ) {
         val existing = existingId?.let { id -> _uiState.value.loans.firstOrNull { it.id == id } }
-        val frequency = PaymentFrequency.entries.firstOrNull { it.label == frequencyLabel } ?: PaymentFrequency.Monthly
-        val customRule = PenaltyMode.entries.firstOrNull { it.label == customPenaltyModeLabel }
-            ?.let { PenaltyRule(it, customPenaltyRate) }
         saveLoan(
             Loan(
                 id = existing?.id ?: 0,
                 clientId = clientId,
                 principal = principal,
-                annualInterestRate = annualInterestRate,
-                term = term,
+                loanType = loanType,
                 startDate = startDate,
-                frequency = frequency,
                 status = existing?.status ?: LoanStatus.Pending,
                 releaseDate = existing?.releaseDate.orEmpty(),
                 releaseAmount = existing?.releaseAmount,
                 releaseMethod = existing?.releaseMethod.orEmpty(),
                 releaseReference = existing?.releaseReference.orEmpty(),
                 penaltyBalance = existing?.penaltyBalance ?: 0.0,
-                penaltyRule = customRule,
             ),
             existingId,
         )

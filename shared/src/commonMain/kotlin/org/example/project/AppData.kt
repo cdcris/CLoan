@@ -18,9 +18,9 @@ internal fun <T> Database.replaceEntities(
 }
 
 internal fun Database.readPenaltyRule(): PenaltyRule {
-    val parts = appDataQueries.readSetting(1L).executeAsOneOrNull()?.split('|') ?: return PenaltyRule(PenaltyMode.Percentage, 5.0)
+    val parts = appDataQueries.readSetting(1L).executeAsOneOrNull()?.split('|') ?: return PenaltyRule(PenaltyMode.Percentage, 0.0)
     val mode = PenaltyMode.entries.firstOrNull { it.name == parts[0] } ?: PenaltyMode.Percentage
-    return PenaltyRule(mode, parts.getOrNull(1)?.toDoubleOrNull() ?: 5.0)
+    return PenaltyRule(mode, parts.getOrNull(1)?.toDoubleOrNull() ?: 0.0)
 }
 
 internal fun Database.savePenaltyRule(rule: PenaltyRule) {
@@ -54,19 +54,38 @@ internal fun decodeClient(id: Int, payload: String): Client {
 }
 
 internal fun encodeLoan(value: Loan) = encodeFields(listOf(
-    value.clientId.toString(), value.principal.toString(), value.annualInterestRate.toString(), value.term.toString(),
-    value.startDate, value.frequency.name, value.status.name, value.releaseDate, value.releaseAmount?.toString().orEmpty(),
-    value.releaseMethod, value.releaseReference, value.penaltyBalance.toString(), value.penaltyRule?.mode?.name.orEmpty(),
-    value.penaltyRule?.rate?.toString().orEmpty(),
+    "v3", value.clientId.toString(), value.principal.toString(), value.loanType.duration.name,
+    value.loanType.interestRate.toString(), value.loanType.penaltyRule.mode.name, value.loanType.penaltyRule.rate.toString(),
+    value.loanType.customDurationDays.toString(), value.startDate, value.status.name, value.releaseDate,
+    value.releaseAmount?.toString().orEmpty(), value.releaseMethod, value.releaseReference, value.penaltyBalance.toString(),
 ))
 
 internal fun decodeLoan(id: Int, payload: String): Loan {
     val fields = decodeFields(payload)
-    val penaltyMode = fields[12].takeIf { it.isNotEmpty() }?.let(PenaltyMode::valueOf)
-    val penaltyRule = penaltyMode?.let { PenaltyRule(it, fields[13].toDouble()) }
-    return Loan(id, fields[0].toInt(), fields[1].toDouble(), fields[2].toDouble(), fields[3].toInt(), fields[4],
-        PaymentFrequency.valueOf(fields[5]), LoanStatus.valueOf(fields[6]), fields[7], fields[8].toDoubleOrNull(),
-        fields[9], fields[10], fields[11].toDouble(), penaltyRule)
+    if (fields.firstOrNull() == "v3") {
+        val loanType = LoanType(
+            duration = LoanDuration.valueOf(fields[3]),
+            interestRate = fields[4].toDouble(),
+            penaltyRule = PenaltyRule(PenaltyMode.valueOf(fields[5]), fields[6].toDouble()),
+            customDurationDays = fields[7].toInt(),
+        )
+        return Loan(id, fields[1].toInt(), fields[2].toDouble(), loanType, fields[8], LoanStatus.valueOf(fields[9]),
+            fields[10], fields[11].toDoubleOrNull(), fields[12], fields[13], fields[14].toDouble())
+    }
+    val penaltyMode = fields[12].takeIf { it.isNotEmpty() }?.let(PenaltyMode::valueOf) ?: PenaltyMode.Percentage
+    val penaltyRule = PenaltyRule(penaltyMode, fields.getOrNull(13)?.toDoubleOrNull() ?: 5.0)
+    val legacyTerm = fields[3].toIntOrNull() ?: 1
+    val legacyRate = fields[2].toDoubleOrNull() ?: 0.0
+    val legacyFrequency = fields[5].let { runCatching { PaymentFrequency.valueOf(it) }.getOrNull() } ?: PaymentFrequency.Monthly
+    val monthsPerYear = when (legacyFrequency) {
+        PaymentFrequency.Weekly -> 12.0 / 52.0
+        PaymentFrequency.SemiMonthly -> 12.0 / 24.0
+        PaymentFrequency.Monthly -> 1.0
+    }
+    val type = LoanType(LoanDuration.Custom, legacyRate / legacyFrequency.periodsPerYear * legacyTerm,
+        penaltyRule, (legacyTerm * monthsPerYear * 30.0).toInt().coerceAtLeast(1))
+    return Loan(id, fields[0].toInt(), fields[1].toDouble(), type, fields[4],
+        LoanStatus.valueOf(fields[6]), fields[7], fields[8].toDoubleOrNull(), fields[9], fields[10], fields[11].toDouble())
 }
 
 internal fun encodePayment(value: Payment) = encodeFields(listOf(

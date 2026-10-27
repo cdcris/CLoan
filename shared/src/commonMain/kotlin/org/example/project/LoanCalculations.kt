@@ -72,21 +72,16 @@ internal fun daysInMonth(year: Int, month: Int): Int = when (month) {
     else -> 31
 }
 
-internal fun createSchedule(principal: Double, annualRate: Double, term: Int, startDate: String, frequency: PaymentFrequency): List<Installment> {
+internal fun createSchedule(principal: Double, loanType: LoanType, startDate: String): List<Installment> {
     val start = parseDate(startDate) ?: return emptyList()
-    if (term <= 0 || principal <= 0 || annualRate < 0) return emptyList()
-    var outstanding = roundMoney(principal)
-    return (1..term).map { paymentNumber ->
-        val dueDate = when (frequency) {
-            PaymentFrequency.Weekly -> start.plusDays(7 * paymentNumber)
-            PaymentFrequency.SemiMonthly -> start.plusDays(15 * paymentNumber)
-            PaymentFrequency.Monthly -> start.plusMonths(paymentNumber)
-        }
-        val paymentPrincipal = if (paymentNumber == term) outstanding else roundMoney(principal / term).coerceAtMost(outstanding)
-        val interest = roundMoney(outstanding * (annualRate / 100.0 / frequency.periodsPerYear))
-        outstanding = roundMoney((outstanding - paymentPrincipal).coerceAtLeast(0.0))
-        Installment(paymentNumber, dueDate.toString(), paymentPrincipal, interest)
+    if (principal <= 0 || loanType.interestRate < 0 || loanType.customDurationDays <= 0) return emptyList()
+    val dueDate = when (loanType.duration) {
+        LoanDuration.FifteenDays -> start.plusDays(15)
+        LoanDuration.Monthly -> start.plusMonths(1)
+        LoanDuration.OneYear -> start.plusMonths(12)
+        LoanDuration.Custom -> start.plusDays(loanType.customDurationDays)
     }
+    return listOf(Installment(1, dueDate.toString(), roundMoney(principal), roundMoney(principal * loanType.interestRate / 100.0)))
 }
 
 internal fun roundMoney(amount: Double): Double = round(amount * 100.0) / 100.0
@@ -103,11 +98,11 @@ internal fun reallocateLoanPayments(loan: Loan, payments: MutableList<Payment>, 
     var paidPenalty = 0.0
     var paidInterest = 0.0
     var paidPrincipal = 0.0
-    val schedule = createSchedule(loan.principal, loan.annualInterestRate, loan.term, loan.startDate, loan.frequency)
+    val schedule = createSchedule(loan.principal, loan.loanType, loan.startDate)
     val installmentRemaining = schedule.map { it.total }.toMutableList()
     val installmentPenalty = MutableList(schedule.size) { 0.0 }
     val penaltyAssessed = MutableList(schedule.size) { false }
-    val rule = loan.penaltyRule ?: defaultPenaltyRule
+    val rule = loan.loanType.penaltyRule
     related.forEach { payment ->
         val index = payments.indexOfFirst { it.id == payment.id }
         if (index < 0) return@forEach
@@ -163,9 +158,9 @@ internal fun penaltyAmount(rule: PenaltyRule, unpaid: Double): Double = roundMon
 )
 
 internal fun installmentStatuses(loan: Loan, payments: List<Payment>, asOfDate: String, defaultPenaltyRule: PenaltyRule): List<InstallmentStatus> {
-    val schedule = createSchedule(loan.principal, loan.annualInterestRate, loan.term, loan.startDate, loan.frequency)
+    val schedule = createSchedule(loan.principal, loan.loanType, loan.startDate)
     val validPayments = payments.filter { it.loanId == loan.id && it.voidReason.isBlank() && it.date <= asOfDate }
-    val rule = loan.penaltyRule ?: defaultPenaltyRule
+    val rule = loan.loanType.penaltyRule
     val eligibleForOverdue = loan.status == LoanStatus.Released || loan.status == LoanStatus.Active || loan.status == LoanStatus.Overdue
     var installmentPenaltiesPaid = (validPayments.sumOf { it.allocatedPenalty } - loan.penaltyBalance).coerceAtLeast(0.0)
     return schedule.map { installment ->
@@ -194,7 +189,7 @@ internal data class OverdueLoanSummary(
 
 internal fun remainingLoanBalance(loan: Loan, payments: List<Payment>, asOfDate: String, defaultPenaltyRule: PenaltyRule): Double {
     val valid = payments.filter { it.loanId == loan.id && it.voidReason.isBlank() && it.date <= asOfDate }
-    val dueInterest = createSchedule(loan.principal, loan.annualInterestRate, loan.term, loan.startDate, loan.frequency)
+    val dueInterest = createSchedule(loan.principal, loan.loanType, loan.startDate)
         .filter { it.dueDate <= asOfDate }
         .sumOf { it.interest }
     val principalLeft = (loan.principal - valid.sumOf { it.allocatedPrincipal }).coerceAtLeast(0.0)
@@ -207,7 +202,7 @@ internal fun remainingLoanBalance(loan: Loan, payments: List<Payment>, asOfDate:
 internal fun loansDueOn(loans: List<Loan>, payments: List<Payment>, start: String, end: String): List<Loan> = loans.filter { loan ->
     val eligible = loan.status == LoanStatus.Released || loan.status == LoanStatus.Active || loan.status == LoanStatus.Overdue
     if (!eligible) return@filter false
-    val schedule = createSchedule(loan.principal, loan.annualInterestRate, loan.term, loan.startDate, loan.frequency)
+    val schedule = createSchedule(loan.principal, loan.loanType, loan.startDate)
     val inWindow = schedule.filter { it.dueDate in start..end }
     if (inWindow.isEmpty()) return@filter false
     val paid = payments.filter { it.loanId == loan.id && it.voidReason.isBlank() && it.date <= end }

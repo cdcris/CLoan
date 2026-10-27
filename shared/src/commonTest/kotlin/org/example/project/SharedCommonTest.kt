@@ -26,7 +26,7 @@ class SharedCommonTest {
 
     @Test
     fun percentagePenaltyUsesUnpaidInstallmentBalanceAtTriggerDate() {
-        val loan = testLoan()
+        val loan = testLoan().copy(loanType = testLoan().loanType.copy(penaltyRule = PenaltyRule(PenaltyMode.Percentage, 5.0)))
         val partialPayment = Payment(1, loan.id, 60.0, "2026-10-01", "Cash", "P1", allocatedPrincipal = 60.0)
 
         val status = installmentStatuses(loan, listOf(partialPayment), "2026-10-02", PenaltyRule(PenaltyMode.Percentage, 5.0)).single()
@@ -40,6 +40,25 @@ class SharedCommonTest {
         val fields = listOf("A|B;C%", "Quezon City · ₱32,000/mo", "", "file.pdf")
 
         assertEquals(fields, decodeFields(encodeFields(fields)))
+    }
+
+    @Test
+    fun loanTypeDefinesSingleDueDateAndInterestForEachDuration() {
+        val principal = 100.0
+        val penalty = PenaltyRule(PenaltyMode.Flat, 4.0)
+        val fifteenDay = createSchedule(principal, LoanType(LoanDuration.FifteenDays, 10.0, penalty), "2026-10-01").single()
+        val custom = createSchedule(principal, LoanType(LoanDuration.Custom, 10.0, penalty, 45), "2026-10-01").single()
+
+        assertEquals("2026-10-16", fifteenDay.dueDate)
+        assertEquals("2026-11-15", custom.dueDate)
+        assertEquals(10.0, fifteenDay.interest)
+    }
+
+    @Test
+    fun loanTypePersistsWithLoan() {
+        val loan = testLoan()
+
+        assertEquals(loan, decodeLoan(loan.id, encodeLoan(loan)))
     }
 
     @Test
@@ -58,10 +77,8 @@ class SharedCommonTest {
         id = 1,
         clientId = 1,
         principal = 120.0,
-        annualInterestRate = 12.0,
-        term = 1,
+        loanType = LoanType(LoanDuration.Monthly, 1.0, PenaltyRule(PenaltyMode.Flat, 10.0)),
         startDate = "2026-09-01",
-        frequency = PaymentFrequency.Monthly,
         status = LoanStatus.Active,
     )
 }

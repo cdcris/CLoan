@@ -82,24 +82,9 @@ private val baselinePersonIcon = ImageVector.Builder(
 }.build()
 
 @Composable
-internal fun SettingsManagement(currentRule: PenaltyRule, onRuleChange: (PenaltyRule) -> Unit, modifier: Modifier = Modifier) {
-    var mode by remember(currentRule.mode) { mutableStateOf(currentRule.mode) }
-    var rate by remember(currentRule.rate) { mutableStateOf(currentRule.rate.toString()) }
-    var menuExpanded by remember { mutableStateOf(false) }
-    val parsedRate = rate.toDoubleOrNull()
-    Column(modifier.background(Color(0xFFF7F8FA)).padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+internal fun SettingsManagement(modifier: Modifier = Modifier) {
+    Column(modifier.background(Color(0xFFF7F8FA)).padding(20.dp)) {
         Text("Settings", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-        Text("Default overdue penalty", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-        Text("New loans use this rule unless a custom rule is set on the loan. Changes also apply to existing loans that use the default.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        androidx.compose.foundation.layout.Box {
-            OutlinedButton(onClick = { menuExpanded = true }, modifier = Modifier.fillMaxWidth()) { Text("${mode.label}  ▾") }
-            DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
-                PenaltyMode.entries.forEach { option -> DropdownMenuItem(text = { Text(option.label) }, onClick = { mode = option; menuExpanded = false }) }
-            }
-        }
-        EditorField(if (mode == PenaltyMode.Flat) "Flat penalty per installment (₱) *" else "Penalty rate (%) *", rate) { rate = it }
-        Button(onClick = { if (parsedRate != null && parsedRate >= 0) onRuleChange(PenaltyRule(mode, parsedRate)) }, enabled = parsedRate != null && parsedRate >= 0) { Text("Save default rule") }
-        Text("A penalty is assessed once, the day after an installment is due, based on the unpaid installment balance at that point. Payments are applied to penalty, then due interest, then principal.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
