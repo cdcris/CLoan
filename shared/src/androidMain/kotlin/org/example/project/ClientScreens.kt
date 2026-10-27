@@ -96,6 +96,7 @@ internal fun ClientManagement(
     clients: List<Client>,
     onSaveClient: (Client, Int?) -> Unit,
     onToggleClientArchived: (Client) -> Unit,
+    onHardDeleteClient: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var query by remember { mutableStateOf("") }
@@ -165,6 +166,7 @@ internal fun ClientManagement(
                         client = client,
                         onEdit = { editingClient = client },
                         onArchive = { onToggleClientArchived(client) },
+                        onHardDelete = { onHardDeleteClient(client.id) },
                     )
                 }
             }
@@ -186,8 +188,9 @@ internal fun ClientManagement(
 }
 
 @Composable
-internal fun ClientCard(client: Client, onEdit: () -> Unit, onArchive: () -> Unit) {
-    val actionsWidth = 152.dp
+internal fun ClientCard(client: Client, onEdit: () -> Unit, onArchive: () -> Unit, onHardDelete: () -> Unit) {
+    var deleteVerificationOpen by remember(client.id) { mutableStateOf(false) }
+    val actionsWidth = 228.dp
     val actionsWidthPx = with(androidx.compose.ui.platform.LocalDensity.current) { actionsWidth.toPx() }
     var offsetX by remember(client.id) { mutableFloatStateOf(0f) }
     androidx.compose.foundation.layout.BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
@@ -198,6 +201,7 @@ internal fun ClientCard(client: Client, onEdit: () -> Unit, onArchive: () -> Uni
         ) {
             TextButton(onClick = { onEdit(); offsetX = 0f }) { Text("Edit") }
             TextButton(onClick = { onArchive(); offsetX = 0f }) { Text(if (client.archived) "Restore" else "Archive") }
+            TextButton(onClick = { deleteVerificationOpen = true }) { Text("Delete") }
         }
         Card(
             modifier = Modifier
@@ -246,6 +250,19 @@ internal fun ClientCard(client: Client, onEdit: () -> Unit, onArchive: () -> Uni
             Spacer(Modifier.height(8.dp))
         }
     }
+    }
+    if (deleteVerificationOpen) {
+        AlertDialog(
+            onDismissRequest = { deleteVerificationOpen = false },
+            title = { Text("Permanently delete client?") },
+            text = { Text("This permanently deletes ${client.name}, their loans, and payment records.") },
+            confirmButton = {
+                TextButton(onClick = { onHardDelete(); deleteVerificationOpen = false }) {
+                    Text("Permanently delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = { TextButton(onClick = { deleteVerificationOpen = false }) { Text("Cancel") } },
+        )
     }
 }
 

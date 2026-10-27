@@ -9,6 +9,7 @@ struct ClientScreen: View {
     @State private var showingEditor = false
     @State private var query = ""
     @State private var showingArchived = false
+    @State private var deletingClient: Client?
 
     var body: some View {
         NavigationStack {
@@ -38,11 +39,28 @@ struct ClientScreen: View {
                             store.viewModel.toggleClientArchived(client: client)
                         }
                         .tint(client.archived ? .green : .orange)
+                        Button(role: .destructive) {
+                            deletingClient = client
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
                     }
                 }
             }
             .navigationTitle("Clients")
             .searchable(text: $query, prompt: "Search name or contact")
+            .alert("Permanently delete client?", isPresented: Binding(
+                get: { deletingClient != nil },
+                set: { if !$0 { deletingClient = nil } }
+            ), presenting: deletingClient) { client in
+                Button("Permanently delete", role: .destructive) {
+                    store.viewModel.hardDeleteClient(clientId: client.id)
+                    deletingClient = nil
+                }
+                Button("Cancel", role: .cancel) { deletingClient = nil }
+            } message: { client in
+                Text("This permanently deletes \(client.name), their loans, and payment records.")
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button(showingArchived ? "Current" : "Archived") { showingArchived.toggle() }

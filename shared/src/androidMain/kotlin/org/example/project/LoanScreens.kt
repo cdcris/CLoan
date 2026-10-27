@@ -44,12 +44,14 @@ internal fun LoanManagement(
     onUpdateLoan: (Loan) -> Unit,
     onReleaseLoan: (Int, String, Double, String) -> Unit,
     onRenewOrTopUpLoan: (Int, Double, String) -> Unit,
+    onHardDeleteLoan: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var showCreate by remember { mutableStateOf(false) }
     var editingLoan by remember { mutableStateOf<Loan?>(null) }
     var selectedLoan by remember { mutableStateOf<Loan?>(null) }
     var releasingLoan by remember { mutableStateOf<Loan?>(null) }
+    var deletingLoan by remember { mutableStateOf<Loan?>(null) }
     Column(modifier.background(Color(0xFFF7F8FA)).padding(horizontal = 20.dp)) {
         Spacer(Modifier.height(22.dp))
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
@@ -78,6 +80,7 @@ internal fun LoanManagement(
                         payments = payments,
                         defaultPenaltyRule = defaultPenaltyRule,
                         onOpen = { selectedLoan = loan },
+                        onHardDelete = { deletingLoan = loan },
                     )
                 }
             }
@@ -126,15 +129,27 @@ internal fun LoanManagement(
             },
         )
     }
+
+    deletingLoan?.let { loan ->
+        HardDeleteConfirmationDialog(
+            title = "Permanently delete loan #${loan.id}?",
+            description = "This permanently deletes the loan and all its payment records.",
+            onDismiss = { deletingLoan = null },
+            onConfirm = { onHardDeleteLoan(loan.id); deletingLoan = null },
+        )
+    }
 }
 
 @Composable
-internal fun LoanCard(loan: Loan, clientName: String, payments: List<Payment>, defaultPenaltyRule: PenaltyRule, onOpen: () -> Unit) {
+internal fun LoanCard(loan: Loan, clientName: String, payments: List<Payment>, defaultPenaltyRule: PenaltyRule, onOpen: () -> Unit, onHardDelete: () -> Unit) {
     val autoOverdue = installmentStatuses(loan, payments, currentDateIso(), defaultPenaltyRule).any { it.isOverdue }
     SwipeReveal(
         key = loan.id,
-        actionsWidth = 96.dp,
-        actions = { TextButton(onClick = onOpen) { Text("Details") } },
+        actionsWidth = 176.dp,
+        actions = {
+            TextButton(onClick = onOpen) { Text("Details") }
+            TextButton(onClick = onHardDelete) { Text("Delete") }
+        },
     ) {
       Card(onClick = onOpen, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
         Column(Modifier.padding(16.dp)) {
@@ -156,6 +171,28 @@ internal fun LoanCard(loan: Loan, clientName: String, payments: List<Payment>, d
         }
       }
     }
+}
+
+@Composable
+internal fun HardDeleteConfirmationDialog(
+    title: String,
+    description: String,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Text(description)
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text("Permanently delete", color = MaterialTheme.colorScheme.error)
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }
 
 @Composable

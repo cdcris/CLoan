@@ -7,6 +7,7 @@ struct PaymentScreen: View {
     @State private var editingPayment: Payment?
     @State private var showingEditor = false
     @State private var receiptPayment: Payment?
+    @State private var deletingPayment: Payment?
 
     var body: some View {
         NavigationStack {
@@ -29,10 +30,27 @@ struct PaymentScreen: View {
                         }
                         Button("Edit") { editingPayment = payment; showingEditor = true }
                             .tint(.blue)
+                        Button(role: .destructive) {
+                            deletingPayment = payment
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
                     }
                 }
             }
             .navigationTitle("Payments")
+            .alert("Permanently delete payment?", isPresented: Binding(
+                get: { deletingPayment != nil },
+                set: { if !$0 { deletingPayment = nil } }
+            ), presenting: deletingPayment) { payment in
+                Button("Permanently delete", role: .destructive) {
+                    store.viewModel.hardDeletePayment(paymentId: payment.id)
+                    deletingPayment = nil
+                }
+                Button("Cancel", role: .cancel) { deletingPayment = nil }
+            } message: { _ in
+                Text("This removes the payment from the record and recalculates the loan balance.")
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { editingPayment = nil; showingEditor = true } label: { Image(systemName: "plus") }

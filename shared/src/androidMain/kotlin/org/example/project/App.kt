@@ -68,6 +68,7 @@ fun App(database: Database) {
                     clients = state.clients,
                     onSaveClient = appViewModel::saveClient,
                     onToggleClientArchived = appViewModel::toggleClientArchived,
+                    onHardDeleteClient = appViewModel::hardDeleteClient,
                     modifier = Modifier.fillMaxSize().padding(contentPadding),
                 )
             } else if (selectedIndex == 2) {
@@ -80,6 +81,7 @@ fun App(database: Database) {
                     onUpdateLoan = appViewModel::updateLoan,
                     onReleaseLoan = appViewModel::releaseLoan,
                     onRenewOrTopUpLoan = appViewModel::renewOrTopUpLoan,
+                    onHardDeleteLoan = appViewModel::hardDeleteLoan,
                     modifier = Modifier.fillMaxSize().padding(contentPadding),
                 )
             } else if (selectedIndex == 3) {
@@ -89,6 +91,7 @@ fun App(database: Database) {
                     payments = state.payments,
                     onSavePayment = appViewModel::savePayment,
                     onVoidPayment = appViewModel::voidPayment,
+                    onHardDeletePayment = appViewModel::hardDeletePayment,
                     modifier = Modifier.fillMaxSize().padding(contentPadding),
                 )
             } else {

@@ -40,6 +40,7 @@ internal fun PaymentManagement(
     payments: List<Payment>,
     onSavePayment: (Payment, Int?) -> Unit,
     onVoidPayment: (Payment, String) -> Unit,
+    onHardDeletePayment: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var showCreate by remember { mutableStateOf(false) }
@@ -48,6 +49,7 @@ internal fun PaymentManagement(
     var receiptPayment by remember { mutableStateOf<Payment?>(null) }
     var filter by remember { mutableStateOf("All loans and clients") }
     var filterMenu by remember { mutableStateOf(false) }
+    var deletingPayment by remember { mutableStateOf<Payment?>(null) }
     val filterOptions = listOf("All loans and clients") + clients.map { client ->
         "Client #${client.id}: ${client.name}"
     } + loans.map { loan ->
@@ -100,6 +102,7 @@ internal fun PaymentManagement(
                         onReceipt = { receiptPayment = payment },
                         onEdit = { editingPayment = payment; showCreate = true },
                         onVoid = { voidingPayment = payment },
+                        onHardDelete = { deletingPayment = payment },
                     )
                 }
             }
@@ -139,6 +142,15 @@ internal fun PaymentManagement(
             onDismiss = { receiptPayment = null },
         )
     }
+
+    deletingPayment?.let { payment ->
+        HardDeleteConfirmationDialog(
+            title = "Permanently delete payment?",
+            description = "This removes the payment from the record and recalculates the loan balance.",
+            onDismiss = { deletingPayment = null },
+            onConfirm = { onHardDeletePayment(payment.id); deletingPayment = null },
+        )
+    }
 }
 
 @Composable
@@ -148,14 +160,16 @@ internal fun PaymentCard(
     onReceipt: () -> Unit,
     onEdit: () -> Unit,
     onVoid: () -> Unit,
+    onHardDelete: () -> Unit,
 ) {
     SwipeReveal(
         key = payment.id,
-        actionsWidth = if (payment.voidReason.isBlank()) 216.dp else 0.dp,
+        actionsWidth = if (payment.voidReason.isBlank()) 288.dp else 216.dp,
         actions = {
             TextButton(onClick = onReceipt) { Text("Receipt") }
             TextButton(onClick = onEdit) { Text("Edit") }
-            TextButton(onClick = onVoid) { Text("Void") }
+            if (payment.voidReason.isBlank()) TextButton(onClick = onVoid) { Text("Void") }
+            TextButton(onClick = onHardDelete) { Text("Delete") }
         },
     ) {
       Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {

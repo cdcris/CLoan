@@ -53,6 +53,38 @@ class AppViewModel(private val database: Database) : ViewModel() {
         database.replaceEntities("clients", updatedClients, Client::id, ::encodeClient)
     }
 
+    fun hardDeleteClient(clientId: Int) {
+        val state = _uiState.value
+        val loanIds = state.loans.filter { it.clientId == clientId }.mapTo(mutableSetOf()) { it.id }
+        val clients = state.clients.filterNot { it.id == clientId }
+        val loans = state.loans.filterNot { it.clientId == clientId }
+        val payments = state.payments.filterNot { it.loanId in loanIds }
+        _uiState.value = state.copy(clients = clients, loans = loans, payments = payments)
+        database.replaceEntities("clients", clients, Client::id, ::encodeClient)
+        database.replaceEntities("loans", loans, Loan::id, ::encodeLoan)
+        database.replaceEntities("payments", payments, Payment::id, ::encodePayment)
+    }
+
+    fun hardDeleteLoan(loanId: Int) {
+        val state = _uiState.value
+        val loans = state.loans.filterNot { it.id == loanId }.map { loan ->
+            loan.copy(
+                sourceLoanId = loan.sourceLoanId?.takeUnless { it == loanId },
+                successorLoanId = loan.successorLoanId?.takeUnless { it == loanId },
+            )
+        }
+        val payments = state.payments.filterNot { it.loanId == loanId }
+        _uiState.value = state.copy(loans = loans, payments = payments)
+        database.replaceEntities("loans", loans, Loan::id, ::encodeLoan)
+        database.replaceEntities("payments", payments, Payment::id, ::encodePayment)
+    }
+
+    fun hardDeletePayment(paymentId: Int) {
+        val state = _uiState.value
+        val payment = state.payments.firstOrNull { it.id == paymentId } ?: return
+        persistPaymentChanges(state, state.payments.filterNot { it.id == paymentId }, listOf(payment.loanId))
+    }
+
     fun saveClientForm(
         existingId: Int?,
         name: String,

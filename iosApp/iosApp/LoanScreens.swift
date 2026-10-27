@@ -7,6 +7,7 @@ struct LoanScreen: View {
     @State private var editingLoan: Loan?
     @State private var showingEditor = false
     @State private var releasingLoan: Loan?
+    @State private var deletingLoan: Loan?
 
     var body: some View {
         NavigationStack {
@@ -44,9 +45,28 @@ struct LoanScreen: View {
                         .font(.subheadline)
                     }
                     .padding(.vertical, 4)
+                    .swipeActions {
+                        Button(role: .destructive) {
+                            deletingLoan = loan
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+                    }
                 }
             }
             .navigationTitle("Loans")
+            .alert("Permanently delete loan?", isPresented: Binding(
+                get: { deletingLoan != nil },
+                set: { if !$0 { deletingLoan = nil } }
+            ), presenting: deletingLoan) { loan in
+                Button("Permanently delete", role: .destructive) {
+                    store.viewModel.hardDeleteLoan(loanId: loan.id)
+                    deletingLoan = nil
+                }
+                Button("Cancel", role: .cancel) { deletingLoan = nil }
+            } message: { loan in
+                Text("This permanently deletes the loan and all its payment records.")
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { editingLoan = nil; showingEditor = true } label: { Image(systemName: "plus") }
