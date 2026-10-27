@@ -156,7 +156,7 @@ internal fun LoanCard(loan: Loan, clientName: String, payments: List<Payment>, d
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(clientName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                    Text("${loan.loanType.duration.label} · ${loan.loanType.interestRate}% interest", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("${loan.loanType.duration.label} · ${formatPercentage(loan.loanType.interestRate)}% interest", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 LoanStatusBadge(if (autoOverdue) LoanStatus.Overdue else loan.status)
             }
@@ -166,7 +166,6 @@ internal fun LoanCard(loan: Loan, clientName: String, payments: List<Payment>, d
                     Text("${money(loan.principal)} principal", style = MaterialTheme.typography.bodyMedium)
                     Text("Starts ${loan.startDate}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                Text("Details  ›", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
             }
         }
       }
@@ -225,7 +224,7 @@ internal fun LoanEditorDialog(clients: List<Client>, loan: Loan?, defaultPenalty
     val computedPrincipal = principal.toDoubleOrNull()
     val computedRate = rate.toDoubleOrNull()
     val computedDays = customDays.toIntOrNull()
-    val loanType = if (computedRate != null && penaltyRate.toDoubleOrNull() != null) LoanType(duration, computedRate, PenaltyRule(penaltyMode, penaltyRate.toDouble()), computedDays ?: 30) else null
+    val loanType = if (computedRate != null && penaltyRate.toDoubleOrNull() != null) LoanType(duration, roundMoney(computedRate), PenaltyRule(penaltyMode, penaltyRate.toDouble()), computedDays ?: 30) else null
     val preview = if (computedPrincipal != null && loanType != null && computedPrincipal > 0 && computedRate?.let { it >= 0 } == true && (duration != LoanDuration.Custom || computedDays != null && computedDays > 0)) {
         createSchedule(computedPrincipal, loanType, startDate)
     } else emptyList()
@@ -301,7 +300,7 @@ internal fun LoanDetailsDialog(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(clientName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                        Text("${loan.loanType.duration.label} · ${loan.loanType.interestRate}% interest", style = MaterialTheme.typography.bodySmall)
+                        Text("${loan.loanType.duration.label} · ${formatPercentage(loan.loanType.interestRate)}% interest", style = MaterialTheme.typography.bodySmall)
                     }
                     LoanStatusBadge(if (schedule.any { it.isOverdue }) LoanStatus.Overdue else loan.status)
                 }
@@ -409,7 +408,7 @@ internal fun RenewalOrTopUpDialog(
                 Text("A reference number will be generated automatically.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 if (newPrincipal != null && newInterest != null) {
                     Text("New principal: ${money(newPrincipal)}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-                    Text("New interest (${sourceLoan.loanType.interestRate}%): ${money(newInterest)}", style = MaterialTheme.typography.bodyMedium)
+                    Text("New interest (${formatPercentage(sourceLoan.loanType.interestRate)}%): ${money(newInterest)}", style = MaterialTheme.typography.bodyMedium)
                     Text("Total scheduled: ${money(newPrincipal + newInterest)} · cash paid to client: ${money(cashAdvance)}", style = MaterialTheme.typography.bodyMedium)
                     Text("Uses the same ${sourceLoan.loanType.duration.label.lowercase()} loan type and penalty rule as the old loan.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }

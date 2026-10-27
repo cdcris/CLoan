@@ -69,7 +69,7 @@ internal fun decodeLoan(id: Int, payload: String): Loan {
         val hasSuccessor = fields[0] == "v5"
         val loanType = LoanType(
             duration = LoanDuration.valueOf(fields[3]),
-            interestRate = fields[4].toDouble(),
+            interestRate = roundMoney(fields[4].toDouble()),
             penaltyRule = PenaltyRule(PenaltyMode.valueOf(fields[5]), fields[6].toDouble()),
             customDurationDays = fields[7].toInt(),
         )
@@ -91,7 +91,8 @@ internal fun decodeLoan(id: Int, payload: String): Loan {
         PaymentFrequency.SemiMonthly -> 12.0 / 24.0
         PaymentFrequency.Monthly -> 1.0
     }
-    val type = LoanType(LoanDuration.Custom, legacyRate / legacyFrequency.periodsPerYear * legacyTerm,
+    val legacyInterestRate = roundMoney(legacyRate / legacyFrequency.periodsPerYear * legacyTerm)
+    val type = LoanType(LoanDuration.Custom, legacyInterestRate,
         penaltyRule, (legacyTerm * monthsPerYear * 30.0).toInt().coerceAtLeast(1))
     return Loan(id, fields[0].toInt(), fields[1].toDouble(), type, fields[4],
         LoanStatus.valueOf(fields[6]), fields[7], fields[8].toDoubleOrNull(), fields[9], fields[10], fields[11].toDouble())

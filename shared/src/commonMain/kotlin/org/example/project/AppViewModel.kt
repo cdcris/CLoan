@@ -117,11 +117,12 @@ class AppViewModel(private val database: Database) : ViewModel() {
 
     fun saveLoan(loan: Loan, existingId: Int? = null) {
         val state = _uiState.value
+        val normalizedLoan = loan.copy(loanType = loan.loanType.copy(interestRate = roundMoney(loan.loanType.interestRate)))
         val updatedLoans = if (existingId == null) {
-            state.loans + loan.copy(id = (state.loans.maxOfOrNull { it.id } ?: 0) + 1)
+            state.loans + normalizedLoan.copy(id = (state.loans.maxOfOrNull { it.id } ?: 0) + 1)
         } else {
             state.loans.map { existing ->
-                if (existing.id == existingId) loan.copy(id = existing.id, status = existing.status) else existing
+                if (existing.id == existingId) normalizedLoan.copy(id = existing.id, status = existing.status) else existing
             }
         }
         persistLoanChanges(state, updatedLoans)

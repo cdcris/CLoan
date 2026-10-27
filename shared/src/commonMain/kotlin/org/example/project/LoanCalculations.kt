@@ -1,5 +1,6 @@
 package org.example.project
 
+import kotlin.math.abs
 import kotlin.math.round
 
 internal data class SimpleDate(val year: Int, val month: Int, val day: Int) {
@@ -88,9 +89,21 @@ internal fun roundMoney(amount: Double): Double = round(amount * 100.0) / 100.0
 
 internal fun money(amount: Double): String {
     val rounded = roundMoney(amount)
-    val whole = rounded.toLong().toString().reversed().chunked(3).joinToString(",").reversed()
-    val cents = (rounded * 100).toLong().rem(100).toString().padStart(2, '0')
-    return "₱$whole.$cents"
+    val totalCents = round(abs(rounded) * 100.0).toLong()
+    val whole = (totalCents / 100).toString().reversed().chunked(3).joinToString(",").reversed()
+    val sign = if (rounded < 0) "-" else ""
+    val pesoAmount = if (totalCents % 100 == 0L) {
+        "$sign$whole"
+    } else {
+        val cents = (totalCents % 100).toString().padStart(2, '0')
+        "$sign$whole.$cents"
+    }
+    return "₱$pesoAmount"
+}
+
+internal fun formatPercentage(value: Double): String {
+    val rounded = round(value * 100.0) / 100.0
+    return if (rounded == rounded.toLong().toDouble()) rounded.toLong().toString() else rounded.toString()
 }
 
 internal fun reallocateLoanPayments(loan: Loan, payments: MutableList<Payment>, defaultPenaltyRule: PenaltyRule) {

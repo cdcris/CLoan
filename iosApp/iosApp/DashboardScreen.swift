@@ -173,7 +173,7 @@ func clientName(for payment: Payment, state: AppUiState) -> String {
 }
 
 func money(_ value: Double) -> String {
-    value.formatted(.currency(code: "PHP"))
+    value.formatted(.currency(code: "PHP").precision(.fractionLength(0...2)))
 }
 
 func todayIso() -> String {
