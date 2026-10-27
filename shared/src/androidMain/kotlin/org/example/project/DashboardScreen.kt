@@ -1,6 +1,7 @@
 package org.example.project
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -76,25 +77,19 @@ internal fun DashboardManagement(
         DashboardMetric("Outstanding balance", money(outstanding), Modifier.fillMaxWidth(), Color(0xFFFFF1D6))
         Spacer(Modifier.height(18.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-            Column(Modifier.weight(1f)) {
-                Text("Due today", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                Text(dueToday.size.toString() + " loans", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.primary)
-            }
-            Column(Modifier.weight(1f)) {
-                Text("Due this week", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                Text(dueThisWeek.size.toString() + " loans", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.primary)
-            }
+            DashboardMetric("Due today", dueToday.size.toString() + " loans", Modifier.weight(1f), Color(0xFFE6F4F5))
+            DashboardMetric("Due this week", dueThisWeek.size.toString() + " loans", Modifier.weight(1f), Color(0xFFFFF1D6))
         }
         Spacer(Modifier.height(18.dp))
-        Text("Overdue loans", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        DashboardMetric("Overdue loans", arrears.size.toString(), Modifier.fillMaxWidth(), Color(0xFFFDE9E7))
         Spacer(Modifier.height(8.dp))
         if (arrears.isEmpty()) {
-            Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color.White)) {
+            Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color.White), border = BorderStroke(1.dp, Color(0xFFE3E7EE))) {
                 Text("No overdue loans", modifier = Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         } else {
             arrears.forEach { item ->
-                Card(Modifier.fillMaxWidth().padding(bottom = 8.dp), colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(14.dp)) {
+                Card(Modifier.fillMaxWidth().padding(bottom = 8.dp), colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(14.dp), border = BorderStroke(1.dp, Color(0xFFE3E7EE))) {
                     Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             Text(item.clientName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
@@ -106,39 +101,43 @@ internal fun DashboardManagement(
             }
         }
         Spacer(Modifier.height(14.dp))
-        Text("Reports", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-        Text("Generate a PDF report for the selected date range.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Spacer(Modifier.height(8.dp))
-        androidx.compose.foundation.layout.Box {
-            OutlinedButton(onClick = { reportMenu = true }, modifier = Modifier.fillMaxWidth()) { Text(reportType + "  ▾") }
-            DropdownMenu(expanded = reportMenu, onDismissRequest = { reportMenu = false }) {
-                reportTypes.forEach { option -> DropdownMenuItem(text = { Text(option) }, onClick = { reportType = option; reportMenu = false }) }
+        Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Color(0xFFE3E7EE))) {
+            Column(Modifier.fillMaxWidth().padding(16.dp)) {
+                Text("Reports", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Text("Generate a PDF report for the selected date range.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(8.dp))
+                androidx.compose.foundation.layout.Box {
+                    OutlinedButton(onClick = { reportMenu = true }, modifier = Modifier.fillMaxWidth()) { Text(reportType + "  ▾") }
+                    DropdownMenu(expanded = reportMenu, onDismissRequest = { reportMenu = false }) {
+                        reportTypes.forEach { option -> DropdownMenuItem(text = { Text(option) }, onClick = { reportType = option; reportMenu = false }) }
+                    }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    if (!isOverdueReport) {
+                        DatePickerField("From", reportFrom, Modifier.weight(1f)) { reportFrom = it }
+                    }
+                    DatePickerField(if (isOverdueReport) "As of date" else "To date", reportTo, Modifier.weight(1f)) { reportTo = it }
+                }
+                if (!datesValid) Text("Enter valid dates in YYYY-MM-DD order.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                Button(
+                    onClick = {
+                        val reportLines = buildReportLines(reportType, reportFrom, reportTo, clients, loans, payments, defaultPenaltyRule)
+                        val key = reportType.lowercase().replace(" ", "-").replace("/", "")
+                        reportResult = saveOfficialReceiptPdf(key + "-" + reportFrom + "-" + reportTo + ".pdf", buildPdfDocument(reportLines))
+                    },
+                    enabled = datesValid,
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text("Generate report PDF") }
+                if (reportResult.isNotBlank()) Text(reportResult, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
             }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            if (!isOverdueReport) {
-                DatePickerField("From", reportFrom, Modifier.weight(1f)) { reportFrom = it }
-            }
-            DatePickerField(if (isOverdueReport) "As of date" else "To date", reportTo, Modifier.weight(1f)) { reportTo = it }
-        }
-        if (!datesValid) Text("Enter valid dates in YYYY-MM-DD order.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-        Button(
-            onClick = {
-                val reportLines = buildReportLines(reportType, reportFrom, reportTo, clients, loans, payments, defaultPenaltyRule)
-                val key = reportType.lowercase().replace(" ", "-").replace("/", "")
-                reportResult = saveOfficialReceiptPdf(key + "-" + reportFrom + "-" + reportTo + ".pdf", buildPdfDocument(reportLines))
-            },
-            enabled = datesValid,
-            modifier = Modifier.fillMaxWidth(),
-        ) { Text("Generate report PDF") }
-        if (reportResult.isNotBlank()) Text(reportResult, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
         Spacer(Modifier.height(24.dp))
     }
 }
 
 @Composable
 internal fun DashboardMetric(label: String, value: String, modifier: Modifier, tint: Color) {
-    Card(modifier, colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(16.dp)) {
+    Card(modifier, colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Color(0xFFE3E7EE))) {
         Column(Modifier.fillMaxWidth().background(tint.copy(alpha = 0.45f)).padding(14.dp)) {
             Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(6.dp))
