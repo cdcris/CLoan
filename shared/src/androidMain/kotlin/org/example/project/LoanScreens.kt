@@ -131,7 +131,12 @@ internal fun LoanManagement(
 @Composable
 internal fun LoanCard(loan: Loan, clientName: String, payments: List<Payment>, defaultPenaltyRule: PenaltyRule, onOpen: () -> Unit) {
     val autoOverdue = installmentStatuses(loan, payments, currentDateIso(), defaultPenaltyRule).any { it.isOverdue }
-    Card(onClick = onOpen, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
+    SwipeReveal(
+        key = loan.id,
+        actionsWidth = 96.dp,
+        actions = { TextButton(onClick = onOpen) { Text("Details") } },
+    ) {
+      Card(onClick = onOpen, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
@@ -149,6 +154,7 @@ internal fun LoanCard(loan: Loan, clientName: String, payments: List<Payment>, d
                 Text("Details  ›", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
             }
         }
+      }
     }
 }
 

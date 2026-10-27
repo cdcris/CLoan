@@ -149,7 +149,16 @@ internal fun PaymentCard(
     onEdit: () -> Unit,
     onVoid: () -> Unit,
 ) {
-    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
+    SwipeReveal(
+        key = payment.id,
+        actionsWidth = if (payment.voidReason.isBlank()) 216.dp else 0.dp,
+        actions = {
+            TextButton(onClick = onReceipt) { Text("Receipt") }
+            TextButton(onClick = onEdit) { Text("Edit") }
+            TextButton(onClick = onVoid) { Text("Void") }
+        },
+    ) {
+      Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
@@ -169,13 +178,9 @@ internal fun PaymentCard(
                 Spacer(Modifier.height(8.dp))
                 Text("Applied · Penalty ${money(payment.allocatedPenalty)}  |  Interest ${money(payment.allocatedInterest)}  |  Principal ${money(payment.allocatedPrincipal)}", style = MaterialTheme.typography.labelSmall)
                 if (payment.unappliedAmount > 0) Text("Unapplied: ${money(payment.unappliedAmount)}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
-                Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
-                    TextButton(onClick = onReceipt) { Text("Receipt PDF") }
-                    TextButton(onClick = onEdit) { Text("Edit") }
-                    TextButton(onClick = onVoid) { Text("Void") }
-                }
             }
         }
+      }
     }
 }
 
