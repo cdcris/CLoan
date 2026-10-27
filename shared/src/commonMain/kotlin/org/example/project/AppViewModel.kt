@@ -29,7 +29,8 @@ class AppViewModel(private val database: Database) : ViewModel() {
     fun saveClient(client: Client, existingId: Int? = null) {
         val state = _uiState.value
         val updatedClients = if (existingId == null) {
-            state.clients + client.copy(id = (state.clients.maxOfOrNull { it.id } ?: 0) + 1)
+            val nextId = client.id.takeIf { it > 0 } ?: (state.clients.maxOfOrNull { it.id } ?: 0) + 1
+            state.clients + client.copy(id = nextId)
         } else {
             state.clients.map { existing ->
                 if (existing.id == existingId) {

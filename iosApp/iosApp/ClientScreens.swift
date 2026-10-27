@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 import Shared
+import UniformTypeIdentifiers
 
 struct ClientScreen: View {
     @ObservedObject var store: AppStore
@@ -46,7 +47,7 @@ struct ClientScreen: View {
                 }
             }
             .sheet(isPresented: $showingEditor) {
-                ClientEditor(existing: editingClient) { values in
+                ClientEditor(existing: editingClient, clientId: editingClient?.id ?? (store.state.clients.map(\.id).max() ?? 0) + 1) { values in
                     store.saveClient(existing: editingClient, name: values.name, birthdate: values.birthdate,
                                      contact: values.contact, address: values.address,
                                      emergencyContactName: values.emergencyContactName, emergencyContactNumber: values.emergencyContactNumber,
@@ -70,6 +71,7 @@ struct ClientEditor: View {
     }
 
     let existing: Client?
+    let clientId: Int32
     let onSave: (Values) -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var name: String
@@ -78,11 +80,14 @@ struct ClientEditor: View {
     @State private var address: String
     @State private var emergencyContactName: String
     @State private var emergencyContactNumber: String
-    @State private var documents: String
+    @State private var documents: [String]
     @State private var status: String
+    @State private var showingDocumentImporter = false
+    @State private var documentImportError: String?
 
-    init(existing: Client?, onSave: @escaping (Values) -> Void) {
+    init(existing: Client?, clientId: Int32, onSave: @escaping (Values) -> Void) {
         self.existing = existing
+        self.clientId = clientId
         self.onSave = onSave
         _name = State(initialValue: existing?.name ?? "")
         _birthdate = State(initialValue: existing?.birthdate ?? "")
@@ -90,7 +95,7 @@ struct ClientEditor: View {
         _address = State(initialValue: existing?.address ?? "")
         _emergencyContactName = State(initialValue: existing?.emergencyContactName ?? "")
         _emergencyContactNumber = State(initialValue: existing?.emergencyContactNumber ?? "")
-        _documents = State(initialValue: existing?.documents.joined(separator: "\n") ?? "")
+        _documents = State(initialValue: existing?.documents ?? [])
         _status = State(initialValue: existing?.status.label ?? "Active")
     }
 
@@ -105,10 +110,30 @@ struct ClientEditor: View {
                 TextField("Emergency contact name", text: $emergencyContactName)
                 TextField("Emergency contact number", text: $emergencyContactNumber)
                     .keyboardType(.phonePad)
-                TextField("Documents (one per line)", text: $documents, axis: .vertical)
+                Section("Documents") {
+                    Button("Choose documents") { showingDocumentImporter = true }
+                    Text("Files are saved as \(clientId)_\(documentNameSlug(name))_N.extension")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    ForEach(documents, id: \.self) { document in
+                        HStack {
+                            Text(document)
+                            Spacer()
+                            Button(role: .destructive) { documents.removeAll { $0 == document } } label: {
+                                Image(systemName: "trash")
+                            }
+                        }
+                    }
+                    if let documentImportError {
+                        Text(documentImportError).foregroundStyle(.red)
+                    }
+                }
                 Picker("Status", selection: $status) {
                     ForEach(["Active", "Inactive", "Blacklisted"], id: \.self) { Text($0) }
                 }
+            }
+            .fileImporter(isPresented: $showingDocumentImporter, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
+                importDocuments(result, clientId: clientId)
             }
             .navigationTitle(existing == nil ? "New client" : "Edit client")
             .toolbar {
@@ -117,7 +142,7 @@ struct ClientEditor: View {
                     Button("Save") {
                         onSave(Values(name: name, birthdate: birthdate, contact: contact, address: address,
                                       emergencyContactName: emergencyContactName, emergencyContactNumber: emergencyContactNumber,
-                                      documents: documents, status: status))
+                                      documents: documents.joined(separator: "\n"), status: status))
                         dismiss()
                     }
                     .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
@@ -125,4 +150,37 @@ struct ClientEditor: View {
             }
         }
     }
+
+    private func importDocuments(_ result: Result<[URL], Error>, clientId: Int32) {
+        do {
+            let urls = try result.get()
+            let directory = try FileManager.default.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+                .appendingPathComponent("ClientDocuments", isDirectory: true)
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            for sourceURL in urls {
+                let hasAccess = sourceURL.startAccessingSecurityScopedResource()
+                defer { if hasAccess { sourceURL.stopAccessingSecurityScopedResource() } }
+                let ext = sourceURL.pathExtension
+                let suffix = ext.isEmpty ? "" : ".\(ext)"
+                var sequence = documents.count + 1
+                var destination = directory.appendingPathComponent("\(clientId)_\(documentNameSlug(name))_\(sequence)\(suffix)")
+                while FileManager.default.fileExists(atPath: destination.path) {
+                    sequence += 1
+                    destination = directory.appendingPathComponent("\(clientId)_\(documentNameSlug(name))_\(sequence)\(suffix)")
+                }
+                try FileManager.default.copyItem(at: sourceURL, to: destination)
+                documents.append(destination.lastPathComponent)
+            }
+            documentImportError = nil
+        } catch {
+            documentImportError = "Could not add the selected files."
+        }
+    }
+}
+
+private func documentNameSlug(_ value: String) -> String {
+    let lowered = value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    let slug = lowered.replacingOccurrences(of: "[^a-z0-9]+", with: "_", options: .regularExpression)
+        .trimmingCharacters(in: CharacterSet(charactersIn: "_"))
+    return slug.isEmpty ? "client" : slug
 }

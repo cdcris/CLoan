@@ -1,5 +1,10 @@
 package org.example.project
 
+import android.content.Context
+import android.net.Uri
+import android.provider.OpenableColumns
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -48,8 +53,10 @@ import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.path
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import java.io.File
 
 private val baselinePersonIcon = ImageVector.Builder(
     name = "baseline_person_24",
@@ -179,6 +186,7 @@ internal fun ClientManagement(
     if (showCreate || editingClient != null) {
         ClientEditorDialog(
             client = editingClient,
+            nextClientId = clients.maxOfOrNull { it.id }?.plus(1) ?: 1,
             onDismiss = { showCreate = false; editingClient = null },
             onSave = { saved ->
                 onSaveClient(saved, editingClient?.id)
@@ -240,7 +248,7 @@ internal fun StatusBadge(status: ClientStatus) {
 }
 
 @Composable
-internal fun ClientEditorDialog(client: Client?, onDismiss: () -> Unit, onSave: (Client) -> Unit) {
+internal fun ClientEditorDialog(client: Client?, nextClientId: Int, onDismiss: () -> Unit, onSave: (Client) -> Unit) {
     var name by remember(client) { mutableStateOf(client?.name.orEmpty()) }
     var birthdate by remember(client) { mutableStateOf(client?.birthdate.orEmpty()) }
     var contact by remember(client) { mutableStateOf(client?.contactNumber.orEmpty()) }
@@ -249,7 +257,16 @@ internal fun ClientEditorDialog(client: Client?, onDismiss: () -> Unit, onSave: 
     var emergencyNumber by remember(client) { mutableStateOf(client?.emergencyContactNumber.orEmpty()) }
     var status by remember(client) { mutableStateOf(client?.status ?: ClientStatus.Active) }
     val documents = remember(client) { mutableStateListOf<String>().apply { addAll(client?.documents.orEmpty()) } }
-    var newDocument by remember { mutableStateOf("") }
+    val context = LocalContext.current
+    var documentPickerError by remember { mutableStateOf<String?>(null) }
+    val documentPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+        val clientId = client?.id ?: nextClientId
+        uris.forEach { uri ->
+            runCatching { copyClientDocument(context, uri, clientId, name, documents.size + 1) }
+                .onSuccess { documents.add(it) }
+                .onFailure { documentPickerError = "Could not add one of the selected files." }
+        }
+    }
     var statusMenuOpen by remember { mutableStateOf(false) }
 
     AlertDialog(
@@ -279,10 +296,9 @@ internal fun ClientEditorDialog(client: Client?, onDismiss: () -> Unit, onSave: 
                         Text("Default photo preview", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedTextField(value = newDocument, onValueChange = { newDocument = it }, modifier = Modifier.weight(1f), singleLine = true, label = { Text("Document filename") })
-                    TextButton(onClick = { if (newDocument.isNotBlank()) { documents.add(newDocument.trim()); newDocument = "" } }) { Text("Add") }
-                }
+                TextButton(onClick = { documentPicker.launch(arrayOf("*/*")) }) { Text("Choose documents") }
+                Text("Files are saved as ${client?.id ?: nextClientId}_${documentNameSlug(name)}_N.extension", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                documentPickerError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 documents.forEachIndexed { index, document ->
                     AssistChip(onClick = { documents.removeAt(index) }, label = { Text("📎 $document  ×") })
                 }
@@ -290,12 +306,33 @@ internal fun ClientEditorDialog(client: Client?, onDismiss: () -> Unit, onSave: 
         },
         confirmButton = {
             Button(onClick = {
-                onSave(Client(client?.id ?: 0, name.trim(), birthdate.trim(), contact.trim(), address.trim(), emergencyName.trim(), emergencyNumber.trim(), status, documents.toList(), client?.archived ?: false))
+                onSave(Client(client?.id ?: nextClientId, name.trim(), birthdate.trim(), contact.trim(), address.trim(), emergencyName.trim(), emergencyNumber.trim(), status, documents.toList(), client?.archived ?: false))
             }, enabled = name.isNotBlank() && contact.isNotBlank()) { Text("Save client") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
 }
+
+private fun copyClientDocument(context: Context, uri: Uri, clientId: Int, clientName: String, sequence: Int): String {
+    val originalName = context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+        if (cursor.moveToFirst()) cursor.getString(0) else null
+    }.orEmpty()
+    val extension = originalName.substringAfterLast('.', "").takeIf { it.isNotBlank() }?.let { ".$it" }.orEmpty()
+    val directory = File(context.filesDir, "client_documents").apply { mkdirs() }
+    var fileSequence = sequence
+    var destination = File(directory, "${clientId}_${documentNameSlug(clientName)}_${fileSequence}$extension")
+    while (destination.exists()) {
+        fileSequence++
+        destination = File(directory, "${clientId}_${documentNameSlug(clientName)}_${fileSequence}$extension")
+    }
+    context.contentResolver.openInputStream(uri).use { input ->
+        requireNotNull(input) { "Unable to read selected file" }.use { source -> destination.outputStream().use(source::copyTo) }
+    }
+    return destination.name
+}
+
+private fun documentNameSlug(value: String): String =
+    value.trim().lowercase().replace(Regex("[^a-z0-9]+"), "_").trim('_').ifBlank { "client" }
 
 @Composable
 internal fun EditorField(label: String, value: String, onValueChange: (String) -> Unit) {
