@@ -8,6 +8,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -42,12 +43,14 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.SolidColor
@@ -184,7 +187,34 @@ internal fun ClientManagement(
 
 @Composable
 internal fun ClientCard(client: Client, onEdit: () -> Unit, onArchive: () -> Unit) {
-    Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
+    val actionsWidth = 152.dp
+    val actionsWidthPx = with(androidx.compose.ui.platform.LocalDensity.current) { actionsWidth.toPx() }
+    var offsetX by remember(client.id) { mutableFloatStateOf(0f) }
+    androidx.compose.foundation.layout.BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.align(Alignment.CenterEnd).width(actionsWidth).height(112.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TextButton(onClick = { onEdit(); offsetX = 0f }) { Text("Edit") }
+            TextButton(onClick = { onArchive(); offsetX = 0f }) { Text(if (client.archived) "Restore" else "Archive") }
+        }
+        Card(
+            modifier = Modifier
+                .width(maxWidth - with(androidx.compose.ui.platform.LocalDensity.current) { (-offsetX).toDp() })
+                .align(Alignment.CenterStart)
+                .pointerInput(client.id, actionsWidthPx) {
+                    detectHorizontalDragGestures(
+                        onHorizontalDrag = { _, dragAmount ->
+                            offsetX = (offsetX + dragAmount).coerceIn(-actionsWidthPx, 0f)
+                        },
+                        onDragEnd = { offsetX = if (offsetX < -actionsWidthPx / 2) -actionsWidthPx else 0f },
+                        onDragCancel = { offsetX = if (offsetX < -actionsWidthPx / 2) -actionsWidthPx else 0f },
+                    )
+                },
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+        ) {
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 androidx.compose.foundation.layout.Box(
@@ -214,11 +244,8 @@ internal fun ClientCard(client: Client, onEdit: () -> Unit, onArchive: () -> Uni
                 Text("📎 ${client.documents.joinToString(" · ")}", style = MaterialTheme.typography.labelSmall, color = Color(0xFF52688F))
             }
             Spacer(Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
-                TextButton(onClick = onEdit) { Text("Edit") }
-                TextButton(onClick = onArchive) { Text(if (client.archived) "Restore" else "Archive") }
-            }
         }
+    }
     }
 }
 

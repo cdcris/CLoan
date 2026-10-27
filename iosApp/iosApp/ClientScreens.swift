@@ -29,6 +29,11 @@ struct ClientScreen: View {
                         }
                     }
                     .swipeActions {
+                        Button("Edit") {
+                            editingClient = client
+                            showingEditor = true
+                        }
+                        .tint(.blue)
                         Button(client.archived ? "Restore" : "Archive") {
                             store.viewModel.toggleClientArchived(client: client)
                         }
