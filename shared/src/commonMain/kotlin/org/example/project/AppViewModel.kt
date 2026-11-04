@@ -19,17 +19,38 @@ class AppViewModel(private val database: Database) : ViewModel() {
             clients = database.readEntities("clients", ::decodeClient),
             loans = database.readEntities("loans", ::decodeLoan),
             payments = database.readEntities("payments", ::decodePayment),
-            defaultPenaltyRule = PenaltyRule(PenaltyMode.Percentage, 0.0),
+            defaultPenaltyRule = database.readPenaltyRule(),
         ),
     )
 
     val uiState: StateFlow<AppUiState> = _uiState.asStateFlow()
     val currentState: AppUiState get() = _uiState.value
 
+    fun exportBackup(): String = encodeBackup(_uiState.value)
+
+    fun importBackup(content: String): Boolean {
+        val backup = decodeBackup(content) ?: return false
+        if (backup.loans.any { it.clientId !in backup.clients.map(Client::id) } ||
+            backup.payments.any { it.loanId !in backup.loans.map(Loan::id) }
+        ) return false
+
+        database.transaction {
+            database.appDataQueries.replaceSection("clients")
+            database.appDataQueries.replaceSection("loans")
+            database.appDataQueries.replaceSection("payments")
+            backup.clients.forEach { database.appDataQueries.insertRecord("clients", it.id.toLong(), encodeClient(it)) }
+            backup.loans.forEach { database.appDataQueries.insertRecord("loans", it.id.toLong(), encodeLoan(it)) }
+            backup.payments.forEach { database.appDataQueries.insertRecord("payments", it.id.toLong(), encodePayment(it)) }
+            database.appDataQueries.writeSetting(1L, "${backup.defaultPenaltyRule.mode.name}|${backup.defaultPenaltyRule.rate}")
+        }
+        _uiState.value = AppUiState(backup.clients, backup.loans, backup.payments, backup.defaultPenaltyRule)
+        return true
+    }
+
     fun saveClient(client: Client, existingId: Int? = null) {
         val state = _uiState.value
         val updatedClients = if (existingId == null) {
-            val nextId = client.id.takeIf { it > 0 } ?: (state.clients.maxOfOrNull { it.id } ?: 0) + 1
+            val nextId = (client.id.takeIf { it > 0 }) ?: ((state.clients.maxOfOrNull { it.id } ?: 0) + 1)
             state.clients + client.copy(id = nextId)
         } else {
             state.clients.map { existing ->

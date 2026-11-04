@@ -2,6 +2,67 @@ package org.example.project
 
 import org.example.project.db.Database
 
+internal data class AppBackup(
+    val clients: List<Client>,
+    val loans: List<Loan>,
+    val payments: List<Payment>,
+    val defaultPenaltyRule: PenaltyRule,
+)
+
+internal fun encodeBackup(state: AppUiState): String = buildString {
+    appendLine("CLoanBackup\t1")
+    appendLine("settings\t${state.defaultPenaltyRule.mode.name}\t${state.defaultPenaltyRule.rate}")
+    state.clients.forEach { appendLine("client\t${it.id}\t${escapeBackupField(encodeClient(it))}") }
+    state.loans.forEach { appendLine("loan\t${it.id}\t${escapeBackupField(encodeLoan(it))}") }
+    state.payments.forEach { appendLine("payment\t${it.id}\t${escapeBackupField(encodePayment(it))}") }
+}
+
+internal fun decodeBackup(content: String): AppBackup? = runCatching {
+    val lines = content.lineSequence().filter(String::isNotBlank).toList()
+    require(lines.firstOrNull() == "CLoanBackup\t1")
+    var penaltyRule: PenaltyRule? = null
+    val clients = mutableListOf<Client>()
+    val loans = mutableListOf<Loan>()
+    val payments = mutableListOf<Payment>()
+    lines.drop(1).forEach { line ->
+        val fields = line.split('\t', limit = 3)
+        when (fields[0]) {
+            "settings" -> {
+                require(fields.size == 3 && penaltyRule == null)
+                penaltyRule = PenaltyRule(PenaltyMode.valueOf(fields[1]), fields[2].toDouble().also { require(it >= 0.0) })
+            }
+            "client", "loan", "payment" -> {
+                require(fields.size == 3)
+                val id = fields[1].toInt().also { require(it > 0) }
+                val payload = unescapeBackupField(fields[2])
+                when (fields[0]) {
+                    "client" -> clients.add(decodeClient(id, payload))
+                    "loan" -> loans.add(decodeLoan(id, payload))
+                    else -> payments.add(decodePayment(id, payload))
+                }
+            }
+            else -> error("Unknown backup entry")
+        }
+    }
+    require(penaltyRule != null)
+    require(clients.map(Client::id).distinct().size == clients.size)
+    require(loans.map(Loan::id).distinct().size == loans.size)
+    require(payments.map(Payment::id).distinct().size == payments.size)
+    AppBackup(clients, loans, payments, requireNotNull(penaltyRule))
+}.getOrNull()
+
+private fun escapeBackupField(value: String): String = value
+    .replace("%", "%25")
+    .replace("\t", "%09")
+    .replace("\n", "%0A")
+    .replace("\r", "%0D")
+
+private fun unescapeBackupField(value: String): String = value
+    .replace("%09", "\t")
+    .replace("%0A", "\n")
+    .replace("%0D", "\r")
+    .replace("%25", "%")
+
 internal fun <T> Database.readEntities(section: String, decode: (Int, String) -> T): List<T> =
     appDataQueries.readSection(section).executeAsList().map { decode(it.id.toInt(), it.payload) }
 

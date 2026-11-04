@@ -95,7 +95,11 @@ fun App(database: Database) {
                     modifier = Modifier.fillMaxSize().padding(contentPadding),
                 )
             } else {
-                SettingsManagement(modifier = Modifier.fillMaxSize().padding(contentPadding))
+                SettingsManagement(
+                    onExport = appViewModel::exportBackup,
+                    onImport = appViewModel::importBackup,
+                    modifier = Modifier.fillMaxSize().padding(contentPadding),
+                )
             }
         }
     }

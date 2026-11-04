@@ -84,10 +84,101 @@ private val baselinePersonIcon = ImageVector.Builder(
     }
 }.build()
 
+private fun settingsActionIcon(action: String): ImageVector = ImageVector.Builder(
+    name = if (action == "Export") "upload" else "download",
+    defaultWidth = 24.dp,
+    defaultHeight = 24.dp,
+    viewportWidth = 24f,
+    viewportHeight = 24f,
+).apply {
+    path(fill = SolidColor(Color(0xFF3556A8)), pathFillType = PathFillType.NonZero) {
+        moveTo(5f, 20f); horizontalLineTo(19f); verticalLineTo(18f); horizontalLineTo(5f); close()
+        if (action == "Export") {
+            moveTo(12f, 3f); lineTo(19f, 10f); horizontalLineTo(15f); verticalLineTo(16f)
+            horizontalLineTo(9f); verticalLineTo(10f); horizontalLineTo(5f); close()
+        } else {
+            moveTo(12f, 17f); lineTo(5f, 10f); horizontalLineTo(9f); verticalLineTo(4f)
+            horizontalLineTo(15f); verticalLineTo(10f); horizontalLineTo(19f); close()
+        }
+    }
+}.build()
+
 @Composable
-internal fun SettingsManagement(modifier: Modifier = Modifier) {
+internal fun SettingsManagement(
+    onExport: () -> String,
+    onImport: (String) -> Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    var pendingExport by remember { mutableStateOf<String?>(null) }
+    var pendingImport by remember { mutableStateOf<String?>(null) }
+    var message by remember { mutableStateOf<String?>(null) }
+    val exportPicker = rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.CreateDocument("text/plain")) { uri ->
+        val backup = pendingExport
+        pendingExport = null
+        if (uri == null || backup == null) return@rememberLauncherForActivityResult
+        message = runCatching {
+            context.contentResolver.openOutputStream(uri)?.bufferedWriter()?.use { it.write(backup) }
+                ?: error("Could not open the selected file.")
+            "Backup exported successfully."
+        }.getOrElse { "Export failed: ${it.message ?: "Unable to write file."}" }
+    }
+    val importPicker = rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        val content = runCatching {
+            context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+                ?: error("Could not open the selected file.")
+        }.getOrElse {
+            message = "Import failed: ${it.message ?: "Unable to read file."}"
+            return@rememberLauncherForActivityResult
+        }
+        pendingImport = content
+    }
+
     Column(modifier.background(Color(0xFFF7F8FA)).padding(20.dp)) {
         Text("Settings", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(16.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+            listOf("Export", "Import").forEach { action ->
+                Card(
+                    modifier = Modifier.fillMaxWidth().clickable {
+                        if (action == "Export") {
+                            pendingExport = onExport()
+                            exportPicker.launch("cloan-backup.txt")
+                        } else {
+                            importPicker.launch(arrayOf("text/*", "application/octet-stream"))
+                        }
+                    },
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 18.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Image(imageVector = settingsActionIcon(action), contentDescription = null, modifier = Modifier.size(24.dp))
+                        Text(action, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
+        }
+        message?.let { Text(it, modifier = Modifier.padding(top = 12.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+    }
+
+    pendingImport?.let { content ->
+        AlertDialog(
+            onDismissRequest = { pendingImport = null },
+            title = { Text("Replace app data?") },
+            text = { Text("Importing this backup replaces all current clients, loans, payments, and default penalty settings.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    pendingImport = null
+                    message = if (onImport(content)) "Backup imported successfully." else "Import failed: the selected file is invalid or incompatible."
+                }) { Text("Replace data") }
+            },
+            dismissButton = { TextButton(onClick = { pendingImport = null }) { Text("Cancel") } },
+        )
     }
 }
 

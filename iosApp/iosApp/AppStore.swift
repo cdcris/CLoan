@@ -96,4 +96,12 @@ final class AppStore: ObservableObject {
     func updateDefaultPenalty(mode: String, rate: Double) {
         viewModel.updateDefaultPenaltyRuleForm(modeLabel: mode, rate: rate)
     }
+
+    func exportBackup() -> String {
+        viewModel.exportBackup()
+    }
+
+    func importBackup(_ content: String) -> Bool {
+        viewModel.importBackup(content: content)
+    }
 }
