@@ -1,9 +1,14 @@
 package org.example.project
 
+import kotlinx.cinterop.BetaInteropApi
+import kotlinx.cinterop.ExperimentalForeignApi
 import platform.Foundation.NSString
 import platform.Foundation.NSTemporaryDirectory
 import platform.Foundation.NSUTF8StringEncoding
+import platform.Foundation.create
+import platform.Foundation.writeToFile
 
+@OptIn(BetaInteropApi::class, ExperimentalForeignApi::class)
 internal actual fun saveOfficialReceiptPdf(fileName: String, pdfBytes: ByteArray): String {
     val safeName = fileName.replace(Regex("[^A-Za-z0-9._-]"), "_")
     val path = NSTemporaryDirectory() + safeName

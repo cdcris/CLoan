@@ -43,7 +43,6 @@ kotlin {
     sourceSets {
         androidMain.dependencies {
             implementation(libs.androidx.activity.compose)
-            implementation(libs.compose.runtime)
             implementation(libs.compose.foundation)
             implementation(libs.compose.material3)
             implementation(libs.compose.ui)
@@ -57,6 +56,7 @@ kotlin {
             implementation(libs.sqldelight.native.driver)
         }
         commonMain.dependencies {
+            implementation(libs.compose.runtime)
             implementation(libs.androidx.lifecycle.viewmodel)
             implementation(libs.sqldelight.runtime)
         }
