@@ -1,6 +1,5 @@
 package org.example.project
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -27,6 +26,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import org.example.project.shared.R
@@ -67,8 +68,7 @@ internal fun PaymentManagement(
         Spacer(Modifier.height(22.dp))
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.weight(1f)) {
-                Text("Payments", style = MaterialTheme.typography.headlineMedium)
-                Text("Record collections and issue receipts", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.nav_payments), style = MaterialTheme.typography.headlineMedium)
             }
             LedgerButton(onClick = { editingPayment = null; showCreate = true }) { Text("+ Record") }
         }
@@ -83,7 +83,7 @@ internal fun PaymentManagement(
         Text("${filteredPayments.size} ${if (filteredPayments.size == 1) "payment" else "payments"}", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(8.dp))
         if (filteredPayments.isEmpty()) {
-            Card(Modifier.fillMaxWidth(), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+            Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
                 Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     LedgerEmptyIcon(R.drawable.ic_payments)
                     Text("No payments found", style = MaterialTheme.typography.titleMedium)
@@ -171,7 +171,7 @@ internal fun PaymentCard(
             TextButton(onClick = onHardDelete) { Text("Delete") }
         },
     ) {
-      Card(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium, border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+      Card(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
@@ -263,10 +263,12 @@ internal fun ReceiptDialog(payment: Payment, clientName: String, onDismiss: () -
         title = { Text("Official receipt") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("CLoan · PAYMENT RECEIPT", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Column(Modifier.fillMaxWidth().background(LedgerInk, MaterialTheme.shapes.medium).padding(16.dp)) {
+                    Text(stringResource(R.string.amount_received), color = Color.White, style = MaterialTheme.typography.labelLarge)
+                    Text(loanAmount, color = Color.White, style = MaterialTheme.typography.headlineSmall)
+                }
                 Text("Receipt no. RC-${payment.id.toString().padStart(6, '0')}")
                 Text("Received from: $clientName")
-                Text("Amount received: $loanAmount")
                 Text("Date: ${payment.date} · Method: ${payment.method}")
                 Text("Reference: ${payment.reference}")
                 Text("Applied: Penalties ${money(payment.allocatedPenalty)}, Interest ${money(payment.allocatedInterest)}, Principal ${money(payment.allocatedPrincipal)}")

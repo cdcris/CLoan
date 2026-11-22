@@ -14,7 +14,18 @@ This is a Kotlin Multiplatform project targeting Android, iOS.
 
 ### Interface
 
-Android uses Jetpack Compose Material 3 and iOS uses SwiftUI. Both dashboards group the outstanding balance, released funds, and collections in one summary card, with portfolio activity and the collection schedule below. The interface follows the device’s light or dark appearance.
+Android uses Jetpack Compose Material 3 Expressive. The native SwiftUI interface on iOS follows the same terracotta, charcoal, and warm neutral palette. The overview shows the outstanding balance, with shortcuts to client search, loans, and settings. Use the Accounts, Collections, and Cash flow controls to switch between portfolio totals. Loan details group account information and the repayment schedule into separate views. Both apps follow the device’s light or dark appearance.
+
+![Android portfolio overview and loan details with a sample record](docs/images/portfolio-and-loan.png)
+
+<details>
+<summary>Ledger artwork</summary>
+
+The built-in ImageGen tool generated the illustration packaged in the [Android drawable](shared/src/androidMain/res/drawable-nodpi/portfolio_ledger.png) and [iOS asset catalog](iosApp/iosApp/Assets.xcassets/PortfolioLedger.imageset/portfolio_ledger.png).
+
+> Create a square transparent product photograph cutout of a closed cognac leather pocket ledger with cream page edges, a slim brass pen lying diagonally across its cover, and three stacked satin brass coins beside it. Three-quarter overhead studio view, softly directional light, carefully crafted tactile objects. A compact diagonal composition filling the frame, fully visible edges. Designed to read at small size on a charcoal loan app card. No text, logos, numerals, scenery or backdrop.
+
+</details>
 
 ### Running the apps
 
@@ -28,6 +39,7 @@ Use the run configurations provided by the run widget in your IDE's toolbar. You
 Use the run button in your IDE's editor gutter, or run tests using Gradle tasks:
 
 - Android tests: `./gradlew :shared:testAndroidHostTest`
+- Android navigation tests on a connected device or emulator: `./gradlew :androidApp:connectedDebugAndroidTest`
 - iOS tests: `./gradlew :shared:iosSimulatorArm64Test`
 
 Running iOS simulator tests and building the SwiftUI app require macOS and Xcode.

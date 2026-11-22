@@ -1,14 +1,18 @@
 package org.example.project
 
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -19,19 +23,28 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import org.example.project.shared.R
 
 @Composable
@@ -56,16 +69,15 @@ internal fun LoanManagement(
         Spacer(Modifier.height(22.dp))
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.weight(1f)) {
-                Text("Loans", style = MaterialTheme.typography.headlineMedium)
-                Text("Create and track loan accounts", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.nav_loans), style = MaterialTheme.typography.headlineMedium)
             }
-            LedgerButton(onClick = { editingLoan = null; showCreate = true }) { Text("+ New loan") }
+            LedgerButton(onClick = { editingLoan = null; showCreate = true }) { Text(stringResource(R.string.new_loan)) }
         }
         Spacer(Modifier.height(16.dp))
         Text("${loans.size} ${if (loans.size == 1) "loan" else "loans"}", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(8.dp))
         if (loans.isEmpty()) {
-            Card(Modifier.fillMaxWidth(), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+            Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
                 Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     LedgerEmptyIcon(R.drawable.ic_loans)
                     Text("No loans yet", style = MaterialTheme.typography.titleMedium)
@@ -152,7 +164,7 @@ internal fun LoanCard(loan: Loan, clientName: String, payments: List<Payment>, d
             TextButton(onClick = onHardDelete) { Text("Delete") }
         },
     ) {
-      Card(onClick = onOpen, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium, border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+      Card(onClick = onOpen, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
@@ -162,12 +174,12 @@ internal fun LoanCard(loan: Loan, clientName: String, payments: List<Payment>, d
                 LoanStatusBadge(if (autoOverdue) LoanStatus.Overdue else loan.status)
             }
             Spacer(Modifier.height(10.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text("${money(loan.principal)} principal", style = MaterialTheme.typography.bodyMedium)
-                    Text("Starts ${loan.startDate}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
+            Text("Starts ${loan.startDate}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Row(Modifier.fillMaxWidth().background(LedgerInk).padding(horizontal = 16.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(R.string.principal), color = Color.White, style = MaterialTheme.typography.labelMedium)
+            Text(money(loan.principal), color = Color.White, style = MaterialTheme.typography.titleMedium)
         }
       }
     }
@@ -291,69 +303,87 @@ internal fun LoanDetailsDialog(
     val schedule = installmentStatuses(loan, payments, currentDateIso(), defaultPenaltyRule)
     var showPenaltyEditor by remember(loan.id) { mutableStateOf(false) }
     var showRenewalDialog by remember(loan.id) { mutableStateOf(false) }
-    AlertDialog(
+    var showSchedule by rememberSaveable(loan.id) { mutableStateOf(false) }
+    Dialog(
         onDismissRequest = onDismiss,
-        title = { Text("Loan details") },
-        text = {
-            Column(Modifier.fillMaxWidth().height(500.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text(clientName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                        Text("${loan.loanType.duration.label} · ${formatPercentage(loan.loanType.interestRate)}% interest", style = MaterialTheme.typography.bodySmall)
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+            Column(Modifier.safeDrawingPadding().widthIn(max = 640.dp).fillMaxWidth().padding(horizontal = 20.dp)) {
+                Box(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+                    FilledTonalIconButton(onClick = onDismiss, modifier = Modifier.align(Alignment.CenterStart),
+                        shape = MaterialTheme.shapes.small) {
+                        Icon(painterResource(R.drawable.ic_back), stringResource(R.string.close))
                     }
-                    LoanStatusBadge(if (schedule.any { it.isOverdue }) LoanStatus.Overdue else loan.status)
+                    Text(stringResource(R.string.loan_details), Modifier.align(Alignment.Center), style = MaterialTheme.typography.titleMedium)
                 }
-                Text("Principal: ${money(loan.principal)}", style = MaterialTheme.typography.bodyMedium)
-                val manualPenaltyOutstanding = (loan.penaltyBalance - payments.filter { it.loanId == loan.id && it.voidReason.isBlank() && it.date <= currentDateIso() }.sumOf { it.allocatedPenalty }).coerceAtLeast(0.0)
-                val penaltyOutstanding = manualPenaltyOutstanding + schedule.sumOf { it.penaltyOutstanding }
-                Text("Penalty balance: ${money(penaltyOutstanding)} (manual ${money(manualPenaltyOutstanding)} · installment ${money(schedule.sumOf { it.penaltyOutstanding })})", style = MaterialTheme.typography.bodyMedium)
-                Text("Start date: ${loan.startDate}", style = MaterialTheme.typography.bodyMedium)
-                Text("Current payoff balance: ${money(loanPayoffBalance(loan, payments, currentDateIso(), defaultPenaltyRule))}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-                if (loan.sourceLoanId != null && loan.origin != null) {
-                    Text("${loan.origin.label} from loan #${loan.sourceLoanId} · carried ${money(loan.carriedBalance)} · cash advanced ${money(loan.cashAdvanced)}", style = MaterialTheme.typography.bodySmall)
-                }
-                if (loan.successorLoanId != null) Text("Renewed into loan #${loan.successorLoanId}", style = MaterialTheme.typography.bodySmall)
-                Text("Total scheduled: ${money(schedule.sumOf { it.installment.total })}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-                if (loan.releaseDate.isNotBlank()) {
-                    Text("Released ${loan.releaseDate} · ${money(loan.releaseAmount ?: 0.0)} · ${loan.releaseMethod} · Ref ${loan.releaseReference}", style = MaterialTheme.typography.bodySmall)
-                }
-                TextButton(onClick = { showPenaltyEditor = true }) { Text("Update penalty balance") }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (loan.status == LoanStatus.Pending) {
-                        OutlinedButton(shape = MaterialTheme.shapes.small, onClick = onEdit) { Text("Edit") }
-                        LedgerButton(onClick = { onUpdate(loan.copy(status = LoanStatus.Approved)) }) { Text("Approve") }
-                    }
-                    if (loan.status == LoanStatus.Approved) LedgerButton(onClick = onRelease) { Text("Record release") }
-                    if (loan.status == LoanStatus.Released) LedgerButton(onClick = { onUpdate(loan.copy(status = LoanStatus.Active)) }) { Text("Mark active") }
-                }
-                if (loan.status == LoanStatus.Active || loan.status == LoanStatus.Overdue) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        TextButton(onClick = { onUpdate(loan.copy(status = LoanStatus.FullyPaid)) }) { Text("Mark fully paid") }
-                        TextButton(onClick = { showRenewalDialog = true }) { Text("Renew / top up") }
-                    }
-                }
-                if (loan.status != LoanStatus.Cancelled && loan.status != LoanStatus.FullyPaid) {
-                    TextButton(onClick = { onUpdate(loan.copy(status = LoanStatus.Cancelled)); onDismiss() }) { Text("Cancel loan") }
-                }
-                Text("Amortization schedule", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("Due · status", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-                    Text("Remaining", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-                    Text("Penalty", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-                }
-                schedule.forEach { status ->
-                    Column(Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text(status.installment.dueDate + if (status.isOverdue) " · OVERDUE ${status.daysOverdue}d" else if (status.unpaid <= 0.009) " · Paid" else " · Upcoming", style = MaterialTheme.typography.labelSmall, color = if (status.isOverdue) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface)
-                            Text(money(status.unpaid), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Medium)
-                            Text(money(status.penaltyOutstanding), style = MaterialTheme.typography.labelSmall)
+                Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface, MaterialTheme.shapes.large)
+                        .padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1.5f)) {
+                            Text(stringResource(R.string.principal), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(money(loan.principal), style = MaterialTheme.typography.headlineSmall)
                         }
+                        Image(painterResource(R.drawable.portfolio_ledger), null, Modifier.weight(1f).height(116.dp))
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(clientName, style = MaterialTheme.typography.titleLarge)
+                            Text("${loan.loanType.duration.label} · ${formatPercentage(loan.loanType.interestRate)}% interest", style = MaterialTheme.typography.bodySmall)
+                        }
+                        LoanStatusBadge(if (schedule.any { it.isOverdue }) LoanStatus.Overdue else loan.status)
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        LedgerFilter(stringResource(R.string.nav_overview), !showSchedule) { showSchedule = false }
+                        LedgerFilter(stringResource(R.string.repayment_schedule), showSchedule) { showSchedule = true }
+                    }
+                    if (showSchedule) {
+                        RepaymentSchedule(schedule)
+                    } else {
+                        val manualPenaltyOutstanding = (loan.penaltyBalance - payments.filter { it.loanId == loan.id && it.voidReason.isBlank() && it.date <= currentDateIso() }.sumOf { it.allocatedPenalty }).coerceAtLeast(0.0)
+                        val penaltyOutstanding = manualPenaltyOutstanding + schedule.sumOf { it.penaltyOutstanding }
+                        LoanFact(R.string.penalty_balance, money(penaltyOutstanding))
+                        Text(stringResource(R.string.penalty_parts, money(manualPenaltyOutstanding), money(schedule.sumOf { it.penaltyOutstanding })),
+                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        LoanFact(R.string.start_date, loan.startDate)
+                        LoanFact(R.string.payoff_balance, money(loanPayoffBalance(loan, payments, currentDateIso(), defaultPenaltyRule)))
+                        if (loan.sourceLoanId != null && loan.origin != null) {
+                            Text("${loan.origin.label} from loan #${loan.sourceLoanId} · carried ${money(loan.carriedBalance)} · cash advanced ${money(loan.cashAdvanced)}", style = MaterialTheme.typography.bodySmall)
+                        }
+                        if (loan.successorLoanId != null) Text("Renewed into loan #${loan.successorLoanId}", style = MaterialTheme.typography.bodySmall)
+                        LoanFact(R.string.total_scheduled, money(schedule.sumOf { it.installment.total }))
+                        if (loan.releaseDate.isNotBlank()) {
+                            Text("Released ${loan.releaseDate} · ${money(loan.releaseAmount ?: 0.0)} · ${loan.releaseMethod} · Ref ${loan.releaseReference}", style = MaterialTheme.typography.bodySmall)
+                        }
+                        TextButton(onClick = { showPenaltyEditor = true }) { Text("Update penalty balance") }
+                        if (loan.status != LoanStatus.Cancelled && loan.status != LoanStatus.FullyPaid) {
+                            TextButton(onClick = { onUpdate(loan.copy(status = LoanStatus.Cancelled)); onDismiss() }) { Text("Cancel loan") }
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                }
+                Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    when (loan.status) {
+                        LoanStatus.Pending -> {
+                            OutlinedButton(shape = MaterialTheme.shapes.small, onClick = onEdit) { Text(stringResource(R.string.edit)) }
+                            LedgerButton(onClick = { onUpdate(loan.copy(status = LoanStatus.Approved)) }, modifier = Modifier.weight(1f)) {
+                                Text(stringResource(R.string.approve))
+                            }
+                        }
+                        LoanStatus.Approved -> LedgerButton(onRelease, Modifier.fillMaxWidth()) { Text(stringResource(R.string.record_release)) }
+                        LoanStatus.Released -> LedgerButton({ onUpdate(loan.copy(status = LoanStatus.Active)) }, Modifier.fillMaxWidth()) {
+                            Text(stringResource(R.string.mark_active))
+                        }
+                        LoanStatus.Active, LoanStatus.Overdue -> {
+                            TextButton(onClick = { onUpdate(loan.copy(status = LoanStatus.FullyPaid)) }) { Text(stringResource(R.string.mark_paid)) }
+                            LedgerButton({ showRenewalDialog = true }, Modifier.weight(1f)) { Text(stringResource(R.string.renew_top_up)) }
+                        }
+                        LoanStatus.FullyPaid, LoanStatus.Cancelled -> Unit
                     }
                 }
             }
-        },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } },
-    )
+        }
+    }
 
     if (showPenaltyEditor) {
         PenaltyBalanceDialog(
@@ -377,6 +407,36 @@ internal fun LoanDetailsDialog(
                 showRenewalDialog = false
             },
         )
+    }
+}
+
+@Composable
+private fun LoanFact(label: Int, value: String) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically) {
+        Text(stringResource(label), Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, style = MaterialTheme.typography.titleSmall)
+    }
+}
+
+@Composable
+private fun RepaymentSchedule(schedule: List<InstallmentStatus>) {
+    schedule.forEach { status ->
+        Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+            Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(status.installment.dueDate, style = MaterialTheme.typography.titleMedium)
+                val label = when {
+                    status.isOverdue -> stringResource(R.string.installment_overdue, status.daysOverdue)
+                    status.unpaid <= 0.009 -> stringResource(R.string.installment_paid)
+                    else -> stringResource(R.string.installment_upcoming)
+                }
+                Text(label, style = MaterialTheme.typography.labelLarge,
+                    color = if (status.isOverdue) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
+                LoanFact(R.string.remaining, money(status.unpaid))
+                LoanFact(R.string.penalty_balance, money(status.penaltyOutstanding))
+            }
+        }
     }
 }
 

@@ -12,9 +12,12 @@ struct PaymentScreen: View {
     var body: some View {
         NavigationStack {
             List {
+                if store.state.payments.isEmpty {
+                    LedgerEmptyState(title: "No payments yet", detail: "Record a payment to see its receipt.", icon: "creditcard")
+                }
                 ForEach(store.state.payments.sorted { $0.date > $1.date }, id: \.id) { payment in
                     VStack(alignment: .leading, spacing: 5) {
-                        Text("\(clientName(for: payment, state: store.state)) · Loan #\(payment.loanId)").font(.system(.headline, design: .serif))
+                        Text("\(clientName(for: payment, state: store.state)) · Loan #\(payment.loanId)").font(.system(.headline, design: .default, weight: .bold))
                         Text("\(money(payment.amount)) · \(payment.date) · \(payment.method)")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
@@ -55,7 +58,8 @@ struct PaymentScreen: View {
             }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { editingPayment = nil; showingEditor = true } label: { Image(systemName: "plus") }
+                    Button("Record payment", systemImage: "plus") { editingPayment = nil; showingEditor = true }
+                        .buttonStyle(.borderedProminent).tint(.ledgerBrown)
                 }
             }
             .sheet(isPresented: $showingEditor) {
@@ -86,9 +90,15 @@ struct ReceiptView: View {
     var body: some View {
         NavigationStack {
             List {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Amount received").font(.subheadline)
+                    Text(money(payment.amount)).font(.largeTitle.bold()).monospacedDigit()
+                }
+                .padding(.vertical, 10)
+                .foregroundStyle(.white)
+                .listRowBackground(Color.ledgerInk)
                 LabeledContent("Receipt no.", value: "RC-\(String(format: "%06d", payment.id))")
                 LabeledContent("Received from", value: clientName)
-                LabeledContent("Amount", value: money(payment.amount))
                 LabeledContent("Date", value: payment.date)
                 LabeledContent("Method", value: payment.method)
                 LabeledContent("Reference", value: payment.reference)

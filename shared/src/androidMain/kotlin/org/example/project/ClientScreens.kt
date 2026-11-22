@@ -5,7 +5,6 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -34,7 +33,6 @@ import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -43,6 +41,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateListOf
@@ -51,6 +50,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.SolidColor
@@ -140,8 +141,10 @@ internal fun SettingsManagement(
     }
 
     Column(modifier.background(MaterialTheme.colorScheme.background).verticalScroll(rememberScrollState()).padding(20.dp)) {
-        Text("Settings", style = MaterialTheme.typography.headlineMedium)
+        Text(stringResource(R.string.nav_settings), style = MaterialTheme.typography.headlineMedium)
         Spacer(Modifier.height(16.dp))
+        Text(stringResource(R.string.backup), style = MaterialTheme.typography.titleLarge)
+        Spacer(Modifier.height(8.dp))
         Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
             listOf("Export", "Import").forEach { action ->
                 Card(
@@ -154,7 +157,7 @@ internal fun SettingsManagement(
                         }
                     },
                     shape = MaterialTheme.shapes.small,
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 18.dp),
@@ -189,12 +192,21 @@ internal fun SettingsManagement(
 @Composable
 internal fun ClientManagement(
     clients: List<Client>,
+    focusSearch: Boolean,
+    onSearchFocused: () -> Unit,
     onSaveClient: (Client, Int?) -> Unit,
     onToggleClientArchived: (Client) -> Unit,
     onHardDeleteClient: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var query by remember { mutableStateOf("") }
+    val searchFocus = remember { FocusRequester() }
+    LaunchedEffect(focusSearch) {
+        if (focusSearch) {
+            searchFocus.requestFocus()
+            onSearchFocused()
+        }
+    }
     var statusFilter by remember { mutableStateOf("All status") }
     var recordFilter by remember { mutableStateOf("Current") }
     var editingClient by remember { mutableStateOf<Client?>(null) }
@@ -214,8 +226,7 @@ internal fun ClientManagement(
         Spacer(Modifier.height(22.dp))
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.weight(1f)) {
-                Text("Clients", style = MaterialTheme.typography.headlineMedium)
-                Text("Manage your client records", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.nav_clients), style = MaterialTheme.typography.headlineMedium)
             }
             LedgerButton(onClick = { editingClient = null; showCreate = true }) { Text("+ Add") }
         }
@@ -223,9 +234,9 @@ internal fun ClientManagement(
         OutlinedTextField(colors = ledgerFieldColors(),
             value = query,
             onValueChange = { query = it },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().focusRequester(searchFocus),
             singleLine = true,
-            label = { Text("Search name or contact number") },
+            placeholder = { Text(stringResource(R.string.search_clients)) },
             leadingIcon = { Icon(painterResource(R.drawable.ic_search), contentDescription = null) },
             shape = MaterialTheme.shapes.small,
         )
@@ -241,14 +252,14 @@ internal fun ClientManagement(
                 }
             }
             listOf("Current", "Archived").forEach { filter ->
-                FilterChip(selected = recordFilter == filter, onClick = { recordFilter = filter }, label = { Text(filter) })
+                LedgerFilter(filter, selected = recordFilter == filter, onClick = { recordFilter = filter })
             }
         }
         Spacer(Modifier.height(12.dp))
         Text("${visibleClients.size} ${if (visibleClients.size == 1) "client" else "clients"}", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(8.dp))
         if (visibleClients.isEmpty()) {
-            Card(modifier = Modifier.fillMaxWidth(), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+            Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
                 Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     LedgerEmptyIcon(R.drawable.ic_clients)
                     Text("No clients found", style = MaterialTheme.typography.titleMedium)
@@ -313,7 +324,7 @@ internal fun ClientCard(client: Client, onEdit: () -> Unit, onArchive: () -> Uni
                     )
                 },
             shape = MaterialTheme.shapes.medium,
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         ) {
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {

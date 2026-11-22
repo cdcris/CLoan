@@ -38,7 +38,7 @@ struct SettingsScreen: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section {
+                Section("Backup") {
                     VStack(spacing: 12) {
                         ForEach(["Export", "Import"], id: \.self) { action in
                             Button {
@@ -53,7 +53,7 @@ struct SettingsScreen: View {
                                     .font(.system(size: 18, weight: .semibold))
                                     .foregroundStyle(.tint)
                                 Text(action)
-                                    .font(.system(.headline, design: .serif))
+                                    .font(.system(.headline, design: .default, weight: .bold))
                                     .foregroundStyle(.primary)
                                 Spacer()
                               }
@@ -78,6 +78,7 @@ struct SettingsScreen: View {
                     guard let value = Double(rate), value >= 0 else { return }
                     store.updateDefaultPenalty(mode: mode, rate: value)
                 }
+                .buttonStyle(.borderedProminent).tint(.ledgerBrown)
                 Section {
                     Text("Changes apply to existing loans that use the default penalty rule.")
                         .font(.footnote)

@@ -46,7 +46,7 @@ final class AppStore: ObservableObject {
         status: String
     ) {
         viewModel.saveClientForm(
-            existingId: existing?.id,
+            existingId: existing.map { KotlinInt(int: $0.id) },
             name: name,
             birthdate: birthdate,
             contactNumber: contact,
@@ -62,29 +62,21 @@ final class AppStore: ObservableObject {
         existing: Loan?,
         clientId: Int32,
         principal: Double,
-        annualRate: Double,
-        term: Int32,
-        startDate: String,
-        frequency: String,
-        penaltyMode: String,
-        penaltyRate: Double
+        loanType: LoanType,
+        startDate: String
     ) {
         viewModel.saveLoanForm(
-            existingId: existing?.id,
+            existingId: existing.map { KotlinInt(int: $0.id) },
             clientId: clientId,
             principal: principal,
-            annualInterestRate: annualRate,
-            term: term,
-            startDate: startDate,
-            frequencyLabel: frequency,
-            customPenaltyModeLabel: penaltyMode,
-            customPenaltyRate: penaltyRate
+            loanType: loanType,
+            startDate: startDate
         )
     }
 
     func savePayment(existing: Payment?, loanId: Int32, amount: Double, date: String, method: String, reference: String) {
         viewModel.savePaymentForm(
-            existingId: existing?.id,
+            existingId: existing.map { KotlinInt(int: $0.id) },
             loanId: loanId,
             amount: amount,
             date: date,

@@ -5,28 +5,46 @@ import UniformTypeIdentifiers
 
 struct ClientScreen: View {
     @ObservedObject var store: AppStore
+    @Binding var searching: Bool
     @State private var editingClient: Client?
     @State private var showingEditor = false
     @State private var query = ""
     @State private var showingArchived = false
     @State private var deletingClient: Client?
 
+    private var visibleClients: [Client] {
+        store.state.clients.filter { client in
+            client.archived == showingArchived &&
+                (query.isEmpty || client.name.localizedCaseInsensitiveContains(query) || client.contactNumber.localizedCaseInsensitiveContains(query))
+        }
+    }
+
     var body: some View {
         NavigationStack {
             List {
-                ForEach(store.state.clients.filter { client in
-                    client.archived == showingArchived &&
-                    (query.isEmpty || client.name.localizedCaseInsensitiveContains(query) || client.contactNumber.localizedCaseInsensitiveContains(query))
-                }, id: \.id) { client in
+                HStack(spacing: 8) {
+                    LedgerFilter(title: "Current", selected: !showingArchived) { showingArchived = false }
+                    LedgerFilter(title: "Archived", selected: showingArchived) { showingArchived = true }
+                }
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets())
+                if visibleClients.isEmpty {
+                    LedgerEmptyState(title: "No clients found", detail: "Try another search or add a client.", icon: "person.2")
+                }
+                ForEach(visibleClients, id: \.id) { client in
                     Button {
                         editingClient = client
                         showingEditor = true
                     } label: {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(client.name).font(.system(.headline, design: .serif))
-                            Text("\(client.contactNumber) · \(client.status.label)\(client.archived ? " · Archived" : "")")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
+                        HStack(spacing: 12) {
+                            Image(systemName: "person.crop.square").font(.title2).foregroundStyle(Color.ledgerAccent)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(client.name).font(.headline).foregroundStyle(.primary)
+                                Text("\(client.contactNumber) · \(client.status.label)\(client.archived ? " · Archived" : "")")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
                     }
                     .listRowBackground(Color.ledgerSurface)
@@ -50,7 +68,7 @@ struct ClientScreen: View {
             }
             .ledgerPage()
             .navigationTitle("Clients")
-            .searchable(text: $query, prompt: "Search name or contact")
+            .searchable(text: $query, isPresented: $searching, prompt: "Search name or contact")
             .alert("Permanently delete client?", isPresented: Binding(
                 get: { deletingClient != nil },
                 set: { if !$0 { deletingClient = nil } }
@@ -64,11 +82,9 @@ struct ClientScreen: View {
                 Text("This permanently deletes \(client.name), their loans, and payment records.")
             }
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button(showingArchived ? "Current" : "Archived") { showingArchived.toggle() }
-                }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { editingClient = nil; showingEditor = true } label: { Image(systemName: "plus") }
+                    Button("Add client", systemImage: "plus") { editingClient = nil; showingEditor = true }
+                        .buttonStyle(.borderedProminent).tint(.ledgerBrown)
                 }
             }
             .sheet(isPresented: $showingEditor) {

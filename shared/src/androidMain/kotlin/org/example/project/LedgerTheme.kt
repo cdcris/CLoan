@@ -2,82 +2,91 @@ package org.example.project
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Text
-import org.example.project.shared.R
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialExpressiveTheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Shapes
+import androidx.compose.material3.Text
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import org.example.project.shared.R
 
-internal val Forest = Color(0xFF153E35)
-internal val Citron = Color(0xFFDAF39A)
+internal val BrandBrown = Color(0xFF935539)
+internal val LedgerInk = Color(0xFF232220)
+private val charcoal = LedgerInk
+private val lightCard = Color(0xFFF6F4F1)
+private val peach = Color(0xFFF4DCCE)
 
 private val lightPalette = lightColorScheme(
-    primary = Color(0xFF205747), onPrimary = Color.White,
-    primaryContainer = Color(0xFFD6EBDB), onPrimaryContainer = Forest,
-    secondary = Color(0xFF4E6841), onSecondary = Color.White,
-    secondaryContainer = Citron, onSecondaryContainer = Forest,
-    tertiary = Color(0xFF795A26), tertiaryContainer = Color(0xFFF6E3BC),
+    primary = BrandBrown, onPrimary = Color.White,
+    primaryContainer = peach, onPrimaryContainer = charcoal,
+    secondary = BrandBrown, onSecondary = Color.White,
+    secondaryContainer = peach, onSecondaryContainer = charcoal,
+    tertiary = Color(0xFF77582A), tertiaryContainer = Color(0xFFF6E3BC),
     onTertiaryContainer = Color(0xFF543B12),
-    background = Color(0xFFF5F5EE), onBackground = Color(0xFF182D25),
-    surface = Color(0xFFFFFEF9), onSurface = Color(0xFF182D25),
-    surfaceVariant = Color(0xFFE9EDE3), onSurfaceVariant = Color(0xFF526157),
-    surfaceContainerLow = Color(0xFFF7F8F1), surfaceContainer = Color(0xFFF0F2E9),
-    surfaceContainerHigh = Color(0xFFE9EDE3), surfaceContainerHighest = Color(0xFFE4E9DD),
-    outline = Color(0xFF77857A), outlineVariant = Color(0xFFD3DACF),
+    background = Color.White, onBackground = charcoal,
+    surface = lightCard, onSurface = charcoal,
+    surfaceVariant = lightCard, onSurfaceVariant = Color.DarkGray,
+    surfaceContainerLow = Color(0xFFFAF9F7), surfaceContainer = lightCard,
+    surfaceContainerHigh = lightCard, surfaceContainerHighest = Color(0xFFE9E9E9),
+    outline = Color.Gray, outlineVariant = Color(0xFFD8D8D8),
 )
 
 private val darkPalette = darkColorScheme(
-    primary = Color(0xFFA3D6BB), onPrimary = Forest,
-    primaryContainer = Color(0xFF284E40), onPrimaryContainer = Color(0xFFD6EBDB),
-    secondary = Citron, onSecondary = Forest,
-    secondaryContainer = Color(0xFF42542E), onSecondaryContainer = Citron,
+    primary = Color(0xFFF0B69A), onPrimary = charcoal,
+    primaryContainer = BrandBrown, onPrimaryContainer = Color.White,
+    secondary = peach, onSecondary = charcoal,
+    secondaryContainer = Color(0xFF583728), onSecondaryContainer = peach,
     tertiary = Color(0xFFE5C78C), tertiaryContainer = Color(0xFF564320),
     onTertiaryContainer = Color(0xFFF6E3BC),
-    background = Color(0xFF101914), onBackground = Color(0xFFE6ECE3),
-    surface = Color(0xFF1C2820), onSurface = Color(0xFFE6ECE3),
-    surfaceVariant = Color(0xFF2E3B31), onSurfaceVariant = Color(0xFFBAC9BC),
-    surfaceContainerLow = Color(0xFF17221B), surfaceContainer = Color(0xFF202C23),
-    surfaceContainerHigh = Color(0xFF29362C), surfaceContainerHighest = Color(0xFF314035),
-    outline = Color(0xFF89998C), outlineVariant = Color(0xFF405145),
+    background = Color(0xFF171614), onBackground = Color.White,
+    surface = Color(0xFF2D2D2D), onSurface = lightCard,
+    surfaceVariant = Color(0xFF373737), onSurfaceVariant = Color.LightGray,
+    surfaceContainerLow = charcoal, surfaceContainer = Color(0xFF2D2D2D),
+    surfaceContainerHigh = Color(0xFF363636), surfaceContainerHighest = Color.DarkGray,
+    outline = Color.LightGray, outlineVariant = Color(0xFF505050),
 )
 
 private val baseType = Typography()
 private val ledgerType = baseType.copy(
     headlineMedium = baseType.headlineMedium.copy(
-        fontFamily = FontFamily.Serif, fontSize = 36.sp, lineHeight = 42.sp, letterSpacing = (-1).sp,
+        fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Bold, fontSize = 36.sp, lineHeight = 42.sp, letterSpacing = (-1).sp,
     ),
-    titleLarge = baseType.titleLarge.copy(fontFamily = FontFamily.Serif, fontWeight = FontWeight.Medium),
-    labelMedium = baseType.labelMedium.copy(letterSpacing = 0.6.sp),
+    titleLarge = baseType.titleLarge.copy(fontWeight = FontWeight.SemiBold, letterSpacing = (-0.5).sp),
+    labelMedium = baseType.labelMedium.copy(letterSpacing = 0.2.sp),
     labelSmall = baseType.labelSmall.copy(fontWeight = FontWeight.Medium),
 )
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun LedgerTheme(content: @Composable () -> Unit) {
-    MaterialTheme(
+    MaterialExpressiveTheme(
         colorScheme = if (isSystemInDarkTheme()) darkPalette else lightPalette,
         typography = ledgerType,
         shapes = Shapes(
@@ -92,8 +101,8 @@ internal fun LedgerTheme(content: @Composable () -> Unit) {
 @Composable
 internal fun ledgerFieldColors() = OutlinedTextFieldDefaults.colors(
     focusedContainerColor = MaterialTheme.colorScheme.surface,
-    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+    unfocusedBorderColor = Color.Transparent,
 )
 
 @Composable
@@ -114,7 +123,20 @@ internal fun LedgerButton(
     enabled: Boolean = true,
     content: @Composable RowScope.() -> Unit,
 ) {
-    Button(onClick = onClick, modifier = modifier, enabled = enabled, shape = MaterialTheme.shapes.small, content = content)
+    Button(onClick = onClick, modifier = modifier.defaultMinSize(minHeight = 48.dp), enabled = enabled, shape = MaterialTheme.shapes.small,
+        colors = ButtonDefaults.buttonColors(containerColor = BrandBrown, contentColor = Color.White), content = content)
+}
+
+@Composable
+internal fun LedgerFilter(label: String, selected: Boolean, onClick: () -> Unit) {
+    FilterChip(
+        selected = selected, onClick = onClick, label = { Text(label) },
+        shape = MaterialTheme.shapes.small, border = null,
+        colors = FilterChipDefaults.filterChipColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            selectedContainerColor = BrandBrown, selectedLabelColor = Color.White,
+        ),
+    )
 }
 
 @Composable
