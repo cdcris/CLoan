@@ -1,5 +1,6 @@
 package org.example.project
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -14,7 +15,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
@@ -30,9 +30,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import org.example.project.shared.R
 
 @Composable
 internal fun LoanManagement(
@@ -52,21 +52,22 @@ internal fun LoanManagement(
     var selectedLoan by remember { mutableStateOf<Loan?>(null) }
     var releasingLoan by remember { mutableStateOf<Loan?>(null) }
     var deletingLoan by remember { mutableStateOf<Loan?>(null) }
-    Column(modifier.background(Color(0xFFF7F8FA)).padding(horizontal = 20.dp)) {
+    Column(modifier.background(MaterialTheme.colorScheme.background).padding(horizontal = 20.dp)) {
         Spacer(Modifier.height(22.dp))
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.weight(1f)) {
-                Text("Loans", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                Text("Loans", style = MaterialTheme.typography.headlineMedium)
                 Text("Create and track loan accounts", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Button(onClick = { editingLoan = null; showCreate = true }) { Text("+ New loan") }
+            LedgerButton(onClick = { editingLoan = null; showCreate = true }) { Text("+ New loan") }
         }
         Spacer(Modifier.height(16.dp))
         Text("${loans.size} ${if (loans.size == 1) "loan" else "loans"}", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(8.dp))
         if (loans.isEmpty()) {
-            Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color.White)) {
+            Card(Modifier.fillMaxWidth(), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
                 Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    LedgerEmptyIcon(R.drawable.ic_loans)
                     Text("No loans yet", style = MaterialTheme.typography.titleMedium)
                     Text("Create a loan to see its repayment schedule.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
@@ -151,7 +152,7 @@ internal fun LoanCard(loan: Loan, clientName: String, payments: List<Payment>, d
             TextButton(onClick = onHardDelete) { Text("Delete") }
         },
     ) {
-      Card(onClick = onOpen, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
+      Card(onClick = onOpen, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium, border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
@@ -197,13 +198,13 @@ internal fun HardDeleteConfirmationDialog(
 @Composable
 internal fun LoanStatusBadge(status: LoanStatus) {
     val colors = when (status) {
-        LoanStatus.Pending -> Color(0xFFFFF1D6) to Color(0xFF93600B)
-        LoanStatus.Approved -> Color(0xFFE8EEFF) to Color(0xFF3556A8)
-        LoanStatus.Released -> Color(0xFFEDE8FF) to Color(0xFF6549A3)
-        LoanStatus.Active -> Color(0xFFE5F5EB) to Color(0xFF237A45)
-        LoanStatus.FullyPaid -> Color(0xFFE6F4F5) to Color(0xFF237278)
-        LoanStatus.Overdue -> Color(0xFFFDE9E7) to Color(0xFFB43D32)
-        LoanStatus.Cancelled -> Color(0xFFF0F1F3) to Color(0xFF626873)
+        LoanStatus.Pending -> MaterialTheme.colorScheme.tertiaryContainer to MaterialTheme.colorScheme.onTertiaryContainer
+        LoanStatus.Approved -> MaterialTheme.colorScheme.primaryContainer to MaterialTheme.colorScheme.onPrimaryContainer
+        LoanStatus.Released -> MaterialTheme.colorScheme.primaryContainer to MaterialTheme.colorScheme.onPrimaryContainer
+        LoanStatus.Active -> MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer
+        LoanStatus.FullyPaid -> MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer
+        LoanStatus.Overdue -> MaterialTheme.colorScheme.errorContainer to MaterialTheme.colorScheme.onErrorContainer
+        LoanStatus.Cancelled -> MaterialTheme.colorScheme.surfaceVariant to MaterialTheme.colorScheme.onSurfaceVariant
     }
     Text(status.label, modifier = Modifier.background(colors.first, RoundedCornerShape(50)).padding(horizontal = 10.dp, vertical = 5.dp), color = colors.second, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Medium)
 }
@@ -237,9 +238,7 @@ internal fun LoanEditorDialog(clients: List<Client>, loan: Loan?, defaultPenalty
             Column(Modifier.fillMaxWidth().height(500.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Loan details", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                 androidx.compose.foundation.layout.Box {
-                    OutlinedButton(onClick = { clientMenu = true }, modifier = Modifier.fillMaxWidth()) {
-                        Text("${clients.firstOrNull { it.id == clientId }?.name ?: "Select client"}  ▾")
-                    }
+                    MenuSelector("${clients.firstOrNull { it.id == clientId }?.name ?: "Select client"}", onClick = { clientMenu = true }, modifier = Modifier.fillMaxWidth())
                     DropdownMenu(expanded = clientMenu, onDismissRequest = { clientMenu = false }) {
                         clients.forEach { client -> DropdownMenuItem(text = { Text(client.name) }, onClick = { clientId = client.id; clientMenu = false }) }
                     }
@@ -247,7 +246,7 @@ internal fun LoanEditorDialog(clients: List<Client>, loan: Loan?, defaultPenalty
                 Text("Client *", style = MaterialTheme.typography.labelMedium)
                 EditorField("Principal amount *", principal) { principal = it }
                 androidx.compose.foundation.layout.Box {
-                    OutlinedButton(onClick = { durationMenu = true }, modifier = Modifier.fillMaxWidth()) { Text("Loan type: ${duration.label}  ▾") }
+                    MenuSelector("Loan type: ${duration.label}", onClick = { durationMenu = true }, modifier = Modifier.fillMaxWidth())
                     DropdownMenu(expanded = durationMenu, onDismissRequest = { durationMenu = false }) {
                         LoanDuration.entries.forEach { option -> DropdownMenuItem(text = { Text(option.label) }, onClick = { duration = option; durationMenu = false }) }
                     }
@@ -258,7 +257,7 @@ internal fun LoanEditorDialog(clients: List<Client>, loan: Loan?, defaultPenalty
                 Text("Penalty for this loan type", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                 run {
                     androidx.compose.foundation.layout.Box {
-                        OutlinedButton(onClick = { penaltyMenu = true }, modifier = Modifier.fillMaxWidth()) { Text("${penaltyMode.label}  ▾") }
+                        MenuSelector(penaltyMode.label, onClick = { penaltyMenu = true }, modifier = Modifier.fillMaxWidth())
                         DropdownMenu(expanded = penaltyMenu, onDismissRequest = { penaltyMenu = false }) {
                             PenaltyMode.entries.forEach { option -> DropdownMenuItem(text = { Text(option.label) }, onClick = { penaltyMode = option; penaltyMenu = false }) }
                         }
@@ -272,7 +271,7 @@ internal fun LoanEditorDialog(clients: List<Client>, loan: Loan?, defaultPenalty
                 }
             }
         },
-        confirmButton = { Button(onClick = { if (valid) onSave(Loan(loan?.id ?: 0, clientId, computedPrincipal, loanType!!, startDate, loan?.status ?: LoanStatus.Pending, penaltyBalance = loan?.penaltyBalance ?: 0.0)) }, enabled = valid) { Text("Save loan") } },
+        confirmButton = { LedgerButton(onClick = { if (valid) onSave(Loan(loan?.id ?: 0, clientId, computedPrincipal, loanType!!, startDate, loan?.status ?: LoanStatus.Pending, penaltyBalance = loan?.penaltyBalance ?: 0.0)) }, enabled = valid) { Text("Save loan") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
 }
@@ -321,11 +320,11 @@ internal fun LoanDetailsDialog(
                 TextButton(onClick = { showPenaltyEditor = true }) { Text("Update penalty balance") }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (loan.status == LoanStatus.Pending) {
-                        OutlinedButton(onClick = onEdit) { Text("Edit") }
-                        Button(onClick = { onUpdate(loan.copy(status = LoanStatus.Approved)) }) { Text("Approve") }
+                        OutlinedButton(shape = MaterialTheme.shapes.small, onClick = onEdit) { Text("Edit") }
+                        LedgerButton(onClick = { onUpdate(loan.copy(status = LoanStatus.Approved)) }) { Text("Approve") }
                     }
-                    if (loan.status == LoanStatus.Approved) Button(onClick = onRelease) { Text("Record release") }
-                    if (loan.status == LoanStatus.Released) Button(onClick = { onUpdate(loan.copy(status = LoanStatus.Active)) }) { Text("Mark active") }
+                    if (loan.status == LoanStatus.Approved) LedgerButton(onClick = onRelease) { Text("Record release") }
+                    if (loan.status == LoanStatus.Released) LedgerButton(onClick = { onUpdate(loan.copy(status = LoanStatus.Active)) }) { Text("Mark active") }
                 }
                 if (loan.status == LoanStatus.Active || loan.status == LoanStatus.Overdue) {
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -415,7 +414,7 @@ internal fun RenewalOrTopUpDialog(
             }
         },
         confirmButton = {
-            Button(onClick = { if (valid) onSave(cashAdvance, date) }, enabled = valid) {
+            LedgerButton(onClick = { if (valid) onSave(cashAdvance, date) }, enabled = valid) {
                 Text(if ((cashAdvance ?: 0.0) > 0) "Confirm top-up" else "Confirm renewal")
             }
         },
@@ -436,7 +435,7 @@ internal fun PenaltyBalanceDialog(currentBalance: Double, onDismiss: () -> Unit,
                 EditorField("Penalty balance *", value) { value = it }
             }
         },
-        confirmButton = { Button(onClick = { if (amount != null) onSave(roundMoney(amount)) }, enabled = amount != null && amount >= 0) { Text("Save balance") } },
+        confirmButton = { LedgerButton(onClick = { if (amount != null) onSave(roundMoney(amount)) }, enabled = amount != null && amount >= 0) { Text("Save balance") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
 }
@@ -457,7 +456,7 @@ internal fun ReleaseFundsDialog(loan: Loan, onDismiss: () -> Unit, onSave: (Stri
                 DatePickerField("Release date *", date) { date = it }
                 EditorField("Amount released *", amount) { amount = it }
                 androidx.compose.foundation.layout.Box {
-                    OutlinedButton(onClick = { methodMenu = true }) { Text("Method *: $method  ▾") }
+                    MenuSelector("Method *: $method", onClick = { methodMenu = true })
                     DropdownMenu(expanded = methodMenu, onDismissRequest = { methodMenu = false }) {
                         listOf("Cash", "Bank transfer", "Mobile wallet", "Check").forEach { option -> DropdownMenuItem(text = { Text(option) }, onClick = { method = option; methodMenu = false }) }
                     }
@@ -465,7 +464,7 @@ internal fun ReleaseFundsDialog(loan: Loan, onDismiss: () -> Unit, onSave: (Stri
                 Text("A reference number will be generated automatically.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         },
-        confirmButton = { Button(onClick = { if (valid) onSave(date, parsedAmount, method) }, enabled = valid) { Text("Save release") } },
+        confirmButton = { LedgerButton(onClick = { if (valid) onSave(date, parsedAmount, method) }, enabled = valid) { Text("Save release") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
 }

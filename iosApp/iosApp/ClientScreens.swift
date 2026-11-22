@@ -23,18 +23,19 @@ struct ClientScreen: View {
                         showingEditor = true
                     } label: {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(client.name).font(.headline)
+                            Text(client.name).font(.system(.headline, design: .serif))
                             Text("\(client.contactNumber) · \(client.status.label)\(client.archived ? " · Archived" : "")")
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                         }
                     }
+                    .listRowBackground(Color.ledgerSurface)
                     .swipeActions {
                         Button("Edit") {
                             editingClient = client
                             showingEditor = true
                         }
-                        .tint(.blue)
+                        .tint(.ledgerAccent)
                         Button(client.archived ? "Restore" : "Archive") {
                             store.viewModel.toggleClientArchived(client: client)
                         }
@@ -47,6 +48,7 @@ struct ClientScreen: View {
                     }
                 }
             }
+            .ledgerPage()
             .navigationTitle("Clients")
             .searchable(text: $query, prompt: "Search name or contact")
             .alert("Permanently delete client?", isPresented: Binding(
@@ -158,6 +160,7 @@ struct ClientEditor: View {
             .fileImporter(isPresented: $showingDocumentImporter, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
                 importDocuments(result, clientId: clientId)
             }
+            .ledgerPage()
             .navigationTitle(existing == nil ? "New client" : "Edit client")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }

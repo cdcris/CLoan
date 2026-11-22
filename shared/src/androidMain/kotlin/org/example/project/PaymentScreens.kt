@@ -1,5 +1,6 @@
 package org.example.project
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -10,15 +11,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -29,9 +27,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import org.example.project.shared.R
 
 @Composable
 internal fun PaymentManagement(
@@ -65,18 +63,18 @@ internal fun PaymentManagement(
         })
     }.sortedByDescending { it.date }
 
-    Column(modifier.background(Color(0xFFF7F8FA)).padding(horizontal = 20.dp)) {
+    Column(modifier.background(MaterialTheme.colorScheme.background).padding(horizontal = 20.dp)) {
         Spacer(Modifier.height(22.dp))
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.weight(1f)) {
-                Text("Payments", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                Text("Payments", style = MaterialTheme.typography.headlineMedium)
                 Text("Record collections and issue receipts", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Button(onClick = { editingPayment = null; showCreate = true }) { Text("+ Record") }
+            LedgerButton(onClick = { editingPayment = null; showCreate = true }) { Text("+ Record") }
         }
         Spacer(Modifier.height(14.dp))
         androidx.compose.foundation.layout.Box {
-            OutlinedButton(onClick = { filterMenu = true }, modifier = Modifier.fillMaxWidth()) { Text("History: $filter  ▾") }
+            MenuSelector("History: $filter", onClick = { filterMenu = true }, modifier = Modifier.fillMaxWidth())
             DropdownMenu(expanded = filterMenu, onDismissRequest = { filterMenu = false }) {
                 filterOptions.forEach { option -> DropdownMenuItem(text = { Text(option) }, onClick = { filter = option; filterMenu = false }) }
             }
@@ -85,8 +83,9 @@ internal fun PaymentManagement(
         Text("${filteredPayments.size} ${if (filteredPayments.size == 1) "payment" else "payments"}", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(8.dp))
         if (filteredPayments.isEmpty()) {
-            Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color.White)) {
+            Card(Modifier.fillMaxWidth(), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
                 Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    LedgerEmptyIcon(R.drawable.ic_payments)
                     Text("No payments found", style = MaterialTheme.typography.titleMedium)
                     Text("Choose another history filter or record a payment.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
@@ -172,7 +171,7 @@ internal fun PaymentCard(
             TextButton(onClick = onHardDelete) { Text("Delete") }
         },
     ) {
-      Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
+      Card(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium, border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
@@ -180,14 +179,14 @@ internal fun PaymentCard(
                     Text("Loan #${payment.loanId} · ${payment.date} · ${payment.method}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 if (payment.voidReason.isNotBlank()) {
-                    Text("VOID", color = Color(0xFFB43D32), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                    Text("VOID", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
                 } else {
                     Text(money(payment.amount), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 }
             }
             Text("Ref ${payment.reference}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             if (payment.voidReason.isNotBlank()) {
-                Text("Void reason: ${payment.voidReason}", style = MaterialTheme.typography.bodySmall, color = Color(0xFFB43D32))
+                Text("Void reason: ${payment.voidReason}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
             } else {
                 Spacer(Modifier.height(8.dp))
                 Text("Applied · Penalty ${money(payment.allocatedPenalty)}  |  Interest ${money(payment.allocatedInterest)}  |  Principal ${money(payment.allocatedPrincipal)}", style = MaterialTheme.typography.labelSmall)
@@ -215,9 +214,7 @@ internal fun PaymentEditorDialog(loans: List<Loan>, payment: Payment?, onDismiss
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 androidx.compose.foundation.layout.Box {
-                    OutlinedButton(onClick = { loanMenu = true }, modifier = Modifier.fillMaxWidth()) {
-                        Text("${eligibleLoans.firstOrNull { it.id == loanId }?.let { "Loan #${it.id}" } ?: "Select loan"}  ▾")
-                    }
+                    MenuSelector("${eligibleLoans.firstOrNull { it.id == loanId }?.let { "Loan #${it.id}" } ?: "Select loan"}", onClick = { loanMenu = true }, modifier = Modifier.fillMaxWidth())
                     DropdownMenu(expanded = loanMenu, onDismissRequest = { loanMenu = false }) {
                         eligibleLoans.forEach { option -> DropdownMenuItem(text = { Text("Loan #${option.id} · ${money(option.principal)}") }, onClick = { loanId = option.id; loanMenu = false }) }
                     }
@@ -226,7 +223,7 @@ internal fun PaymentEditorDialog(loans: List<Loan>, payment: Payment?, onDismiss
                 EditorField("Amount *", amount) { amount = it }
                 DatePickerField("Payment date *", date) { date = it }
                 androidx.compose.foundation.layout.Box {
-                    OutlinedButton(onClick = { methodMenu = true }) { Text("$method  ▾") }
+                    MenuSelector(method, onClick = { methodMenu = true })
                     DropdownMenu(expanded = methodMenu, onDismissRequest = { methodMenu = false }) {
                         listOf("Cash", "Bank transfer", "Mobile wallet", "Check").forEach { option -> DropdownMenuItem(text = { Text(option) }, onClick = { method = option; methodMenu = false }) }
                     }
@@ -235,7 +232,7 @@ internal fun PaymentEditorDialog(loans: List<Loan>, payment: Payment?, onDismiss
                 Text("You can pay before the due date. Early payments reduce the outstanding principal immediately; payments then cover overdue penalties, due interest, and principal.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         },
-        confirmButton = { Button(onClick = { if (valid) onSave(Payment(payment?.id ?: 0, loanId, parsedAmount, date, method, "")) }, enabled = valid) { Text("Save payment") } },
+        confirmButton = { LedgerButton(onClick = { if (valid) onSave(Payment(payment?.id ?: 0, loanId, parsedAmount, date, method, "")) }, enabled = valid) { Text("Save payment") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
 }
@@ -249,10 +246,10 @@ internal fun VoidPaymentDialog(payment: Payment, onDismiss: () -> Unit, onVoid: 
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Payment ${money(payment.amount)} · Ref ${payment.reference}")
-                OutlinedTextField(value = reason, onValueChange = { reason = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Reason for voiding *") })
+                OutlinedTextField(colors = ledgerFieldColors(), value = reason, onValueChange = { reason = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Reason for voiding *") })
             }
         },
-        confirmButton = { Button(onClick = { if (reason.isNotBlank()) onVoid(reason.trim()) }, enabled = reason.isNotBlank()) { Text("Void payment") } },
+        confirmButton = { LedgerButton(onClick = { if (reason.isNotBlank()) onVoid(reason.trim()) }, enabled = reason.isNotBlank()) { Text("Void payment") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Keep payment") } },
     )
 }
@@ -277,7 +274,7 @@ internal fun ReceiptDialog(payment: Payment, clientName: String, onDismiss: () -
             }
         },
         confirmButton = {
-            Button(onClick = {
+            LedgerButton(onClick = {
                 val lines = listOf(
                     "CLoan - OFFICIAL PAYMENT RECEIPT",
                     "Receipt no: RC-${payment.id.toString().padStart(6, '0')}",

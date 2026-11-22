@@ -53,13 +53,13 @@ struct SettingsScreen: View {
                                     .font(.system(size: 18, weight: .semibold))
                                     .foregroundStyle(.tint)
                                 Text(action)
-                                    .font(.headline)
+                                    .font(.system(.headline, design: .serif))
                                     .foregroundStyle(.primary)
                                 Spacer()
                               }
                                 .frame(maxWidth: .infinity, minHeight: 54, alignment: .leading)
                                 .padding(.horizontal, 12)
-                                .background(.background, in: RoundedRectangle(cornerRadius: 12))
+                                .background(Color.ledgerSurface, in: RoundedRectangle(cornerRadius: 16))
                             }
                             .buttonStyle(.plain)
                         }
@@ -84,6 +84,7 @@ struct SettingsScreen: View {
                         .foregroundStyle(.secondary)
                 }
             }
+            .ledgerPage()
             .navigationTitle("Settings")
             .onChange(of: store.state.defaultPenaltyRule.rate) { _, rate in self.rate = String(rate) }
             .onChange(of: store.state.defaultPenaltyRule.mode.label) { _, mode in self.mode = mode }

@@ -19,14 +19,14 @@ struct LoanScreen: View {
                         } label: {
                             HStack {
                             VStack(alignment: .leading, spacing: 3) {
-                                Text(clientName(for: loan, in: store.state.clients)).font(.headline)
+                                Text(clientName(for: loan, in: store.state.clients)).font(.system(.headline, design: .serif))
                                 Text("Loan #\(loan.id) · \(loan.frequency.label) · \(loan.term) payments")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
                             Spacer()
                             VStack(alignment: .trailing) {
-                                Text(money(loan.principal)).font(.headline)
+                                Text(money(loan.principal)).font(.system(.headline, design: .serif))
                                 Text(loan.status.label).font(.caption).foregroundStyle(.secondary)
                             }
                             }
@@ -43,8 +43,10 @@ struct LoanScreen: View {
                             }
                         }
                         .font(.subheadline)
+                        .buttonStyle(.bordered)
                     }
                     .padding(.vertical, 4)
+                    .listRowBackground(Color.ledgerSurface)
                     .swipeActions {
                         Button(role: .destructive) {
                             deletingLoan = loan
@@ -54,6 +56,7 @@ struct LoanScreen: View {
                     }
                 }
             }
+            .ledgerPage()
             .navigationTitle("Loans")
             .alert("Permanently delete loan?", isPresented: Binding(
                 get: { deletingLoan != nil },
@@ -135,6 +138,7 @@ struct LoanDetailsScreen: View {
                     }
                 }
             }
+            .ledgerPage()
             .navigationTitle("Loan #\(loan.id)")
             .alert("Update penalty balance", isPresented: $showingPenaltyEditor) {
                 TextField("Balance *", text: $penaltyValue).keyboardType(.decimalPad)
@@ -214,6 +218,7 @@ struct LoanEditor: View {
                         .keyboardType(.decimalPad)
                 }
             }
+            .ledgerPage()
             .navigationTitle(existing == nil ? "New loan" : "Edit loan")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
@@ -256,6 +261,7 @@ struct ReleaseEditor: View {
                 TextField("Method *", text: $method)
                 TextField("Reference", text: $reference)
             }
+            .ledgerPage()
             .navigationTitle("Record release")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }

@@ -5,10 +5,11 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.Image
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -26,17 +27,17 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -50,16 +51,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.path
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import java.io.File
+import org.example.project.shared.R
 
 private val baselinePersonIcon = ImageVector.Builder(
     name = "baseline_person_24",
@@ -68,7 +72,7 @@ private val baselinePersonIcon = ImageVector.Builder(
     viewportWidth = 24f,
     viewportHeight = 24f,
 ).apply {
-    path(fill = SolidColor(Color(0xFF3556A8)), pathFillType = PathFillType.NonZero) {
+    path(fill = SolidColor(Color.Black), pathFillType = PathFillType.NonZero) {
         moveTo(12f, 12f)
         curveTo(14.21f, 12f, 16f, 10.21f, 16f, 8f)
         curveTo(16f, 5.79f, 14.21f, 4f, 12f, 4f)
@@ -91,7 +95,7 @@ private fun settingsActionIcon(action: String): ImageVector = ImageVector.Builde
     viewportWidth = 24f,
     viewportHeight = 24f,
 ).apply {
-    path(fill = SolidColor(Color(0xFF3556A8)), pathFillType = PathFillType.NonZero) {
+    path(fill = SolidColor(Color.Black), pathFillType = PathFillType.NonZero) {
         moveTo(5f, 20f); horizontalLineTo(19f); verticalLineTo(18f); horizontalLineTo(5f); close()
         if (action == "Export") {
             moveTo(12f, 3f); lineTo(19f, 10f); horizontalLineTo(15f); verticalLineTo(16f)
@@ -135,8 +139,8 @@ internal fun SettingsManagement(
         pendingImport = content
     }
 
-    Column(modifier.background(Color(0xFFF7F8FA)).padding(20.dp)) {
-        Text("Settings", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+    Column(modifier.background(MaterialTheme.colorScheme.background).verticalScroll(rememberScrollState()).padding(20.dp)) {
+        Text("Settings", style = MaterialTheme.typography.headlineMedium)
         Spacer(Modifier.height(16.dp))
         Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
             listOf("Export", "Import").forEach { action ->
@@ -149,15 +153,15 @@ internal fun SettingsManagement(
                             importPicker.launch(arrayOf("text/*", "application/octet-stream"))
                         }
                     },
-                    shape = RoundedCornerShape(14.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    shape = MaterialTheme.shapes.small,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 18.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Image(imageVector = settingsActionIcon(action), contentDescription = null, modifier = Modifier.size(24.dp))
+                        Icon(tint = MaterialTheme.colorScheme.primary, imageVector = settingsActionIcon(action), contentDescription = null, modifier = Modifier.size(24.dp))
                         Text(action, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                     }
                 }
@@ -206,30 +210,30 @@ internal fun ClientManagement(
         matchesQuery && matchesStatus && matchesArchive
     }
 
-    Column(modifier = modifier.background(Color(0xFFF7F8FA)).padding(horizontal = 20.dp)) {
+    Column(modifier = modifier.background(MaterialTheme.colorScheme.background).padding(horizontal = 20.dp)) {
         Spacer(Modifier.height(22.dp))
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.weight(1f)) {
-                Text("Clients", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                Text("Clients", style = MaterialTheme.typography.headlineMedium)
                 Text("Manage your client records", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Button(onClick = { editingClient = null; showCreate = true }) { Text("+ Add") }
+            LedgerButton(onClick = { editingClient = null; showCreate = true }) { Text("+ Add") }
         }
         Spacer(Modifier.height(18.dp))
-        OutlinedTextField(
+        OutlinedTextField(colors = ledgerFieldColors(),
             value = query,
             onValueChange = { query = it },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             label = { Text("Search name or contact number") },
-            leadingIcon = { Text("⌕", style = MaterialTheme.typography.titleLarge) },
-            shape = RoundedCornerShape(14.dp),
+            leadingIcon = { Icon(painterResource(R.drawable.ic_search), contentDescription = null) },
+            shape = MaterialTheme.shapes.small,
         )
         Spacer(Modifier.height(12.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             var statusMenuOpen by remember { mutableStateOf(false) }
             androidx.compose.foundation.layout.Box {
-                OutlinedButton(onClick = { statusMenuOpen = true }) { Text("$statusFilter  ▾") }
+                MenuSelector(statusFilter, onClick = { statusMenuOpen = true })
                 DropdownMenu(expanded = statusMenuOpen, onDismissRequest = { statusMenuOpen = false }) {
                     (listOf("All status") + ClientStatus.entries.map { it.label }).forEach { status ->
                         DropdownMenuItem(text = { Text(status) }, onClick = { statusFilter = status; statusMenuOpen = false })
@@ -244,8 +248,9 @@ internal fun ClientManagement(
         Text("${visibleClients.size} ${if (visibleClients.size == 1) "client" else "clients"}", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(8.dp))
         if (visibleClients.isEmpty()) {
-            Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color.White)) {
+            Card(modifier = Modifier.fillMaxWidth(), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
                 Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    LedgerEmptyIcon(R.drawable.ic_clients)
                     Text("No clients found", style = MaterialTheme.typography.titleMedium)
                     Text("Try another search or add a client.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
@@ -307,19 +312,19 @@ internal fun ClientCard(client: Client, onEdit: () -> Unit, onArchive: () -> Uni
                         onDragCancel = { offsetX = if (offsetX < -actionsWidthPx / 2) -actionsWidthPx else 0f },
                     )
                 },
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
+            shape = MaterialTheme.shapes.medium,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         ) {
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 androidx.compose.foundation.layout.Box(
-                    Modifier.size(42.dp).background(Color(0xFFE8EEFF), CircleShape),
+                    Modifier.size(42.dp).background(MaterialTheme.colorScheme.primaryContainer, CircleShape),
                     contentAlignment = Alignment.Center,
                 ) {
                     if (client.documents.isEmpty()) {
-                        Image(imageVector = baselinePersonIcon, contentDescription = "Default client photo", modifier = Modifier.size(24.dp))
+                        Icon(tint = MaterialTheme.colorScheme.primary, imageVector = baselinePersonIcon, contentDescription = "Default client photo", modifier = Modifier.size(24.dp))
                     } else {
-                        Text(client.name.split(" ").take(2).mapNotNull { it.firstOrNull() }.joinToString(""), color = Color(0xFF3556A8), fontWeight = FontWeight.Bold)
+                        Text(client.name.split(" ").take(2).mapNotNull { it.firstOrNull() }.joinToString(""), color = MaterialTheme.colorScheme.onPrimaryContainer, fontWeight = FontWeight.Bold)
                     }
                 }
                 Spacer(Modifier.width(12.dp))
@@ -336,7 +341,7 @@ internal fun ClientCard(client: Client, onEdit: () -> Unit, onArchive: () -> Uni
             Text(client.address, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             if (client.documents.isNotEmpty()) {
                 Spacer(Modifier.height(8.dp))
-                Text("📎 ${client.documents.joinToString(" · ")}", style = MaterialTheme.typography.labelSmall, color = Color(0xFF52688F))
+                Text("📎 ${client.documents.joinToString(" · ")}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
             }
             Spacer(Modifier.height(8.dp))
         }
@@ -360,9 +365,9 @@ internal fun ClientCard(client: Client, onEdit: () -> Unit, onArchive: () -> Uni
 @Composable
 internal fun StatusBadge(status: ClientStatus) {
     val (background, foreground) = when (status) {
-        ClientStatus.Active -> Color(0xFFE5F5EB) to Color(0xFF237A45)
-        ClientStatus.Inactive -> Color(0xFFF0F1F3) to Color(0xFF626873)
-        ClientStatus.Blacklisted -> Color(0xFFFDE9E7) to Color(0xFFB43D32)
+        ClientStatus.Active -> MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer
+        ClientStatus.Inactive -> MaterialTheme.colorScheme.surfaceVariant to MaterialTheme.colorScheme.onSurfaceVariant
+        ClientStatus.Blacklisted -> MaterialTheme.colorScheme.errorContainer to MaterialTheme.colorScheme.onErrorContainer
     }
     Text(status.label, modifier = Modifier.background(background, RoundedCornerShape(50)).padding(horizontal = 10.dp, vertical = 5.dp), color = foreground, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Medium)
 }
@@ -403,7 +408,7 @@ internal fun ClientEditorDialog(client: Client?, nextClientId: Int, onDismiss: (
                 EditorField("Emergency contact number", emergencyNumber) { emergencyNumber = it }
                 Text("Client status", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                 androidx.compose.foundation.layout.Box {
-                    OutlinedButton(onClick = { statusMenuOpen = true }) { Text("${status.label}  ▾") }
+                    MenuSelector(status.label, onClick = { statusMenuOpen = true })
                     DropdownMenu(expanded = statusMenuOpen, onDismissRequest = { statusMenuOpen = false }) {
                         ClientStatus.entries.forEach { option -> DropdownMenuItem(text = { Text(option.label) }, onClick = { status = option; statusMenuOpen = false }) }
                     }
@@ -412,7 +417,7 @@ internal fun ClientEditorDialog(client: Client?, nextClientId: Int, onDismiss: (
                 Text("You can save the client without attaching documents.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 if (documents.isEmpty()) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Image(imageVector = baselinePersonIcon, contentDescription = "Default client photo preview", modifier = Modifier.size(42.dp))
+                        Icon(tint = MaterialTheme.colorScheme.primary, imageVector = baselinePersonIcon, contentDescription = "Default client photo preview", modifier = Modifier.size(42.dp))
                         Text("Default photo preview", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
@@ -425,7 +430,7 @@ internal fun ClientEditorDialog(client: Client?, nextClientId: Int, onDismiss: (
             }
         },
         confirmButton = {
-            Button(onClick = {
+            LedgerButton(onClick = {
                 onSave(Client(client?.id ?: nextClientId, name.trim(), birthdate.trim(), contact.trim(), address.trim(), emergencyName.trim(), emergencyNumber.trim(), status, documents.toList(), client?.archived ?: false))
             }, enabled = name.isNotBlank() && contact.isNotBlank()) { Text("Save client") }
         },
@@ -456,21 +461,21 @@ private fun documentNameSlug(value: String): String =
 
 @Composable
 internal fun EditorField(label: String, value: String, onValueChange: (String) -> Unit) {
-    OutlinedTextField(value = value, onValueChange = onValueChange, modifier = Modifier.fillMaxWidth(), label = { Text(label) }, singleLine = label != "Address")
+    OutlinedTextField(colors = ledgerFieldColors(), value = value, onValueChange = onValueChange, modifier = Modifier.fillMaxWidth(), label = { Text(label) }, singleLine = label != "Address")
 }
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
 internal fun DatePickerField(label: String, value: String, modifier: Modifier = Modifier, onValueChange: (String) -> Unit) {
     var pickerOpen by remember { mutableStateOf(false) }
-    OutlinedTextField(
+    OutlinedTextField(colors = ledgerFieldColors(),
         value = value,
         onValueChange = {},
         modifier = modifier.fillMaxWidth().clickable { pickerOpen = true },
         label = { Text(label) },
         singleLine = true,
         readOnly = true,
-        trailingIcon = { TextButton(onClick = { pickerOpen = true }) { Text("Choose") } },
+        trailingIcon = { IconButton(onClick = { pickerOpen = true }) { Icon(painterResource(R.drawable.ic_calendar), stringResource(R.string.choose_date, label)) } },
     )
     if (pickerOpen) {
         val pickerState = rememberDatePickerState(initialSelectedDateMillis = parseDate(value)?.toUtcMillis())

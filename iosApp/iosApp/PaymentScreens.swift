@@ -14,7 +14,7 @@ struct PaymentScreen: View {
             List {
                 ForEach(store.state.payments.sorted { $0.date > $1.date }, id: \.id) { payment in
                     VStack(alignment: .leading, spacing: 5) {
-                        Text("\(clientName(for: payment, state: store.state)) · Loan #\(payment.loanId)").font(.headline)
+                        Text("\(clientName(for: payment, state: store.state)) · Loan #\(payment.loanId)").font(.system(.headline, design: .serif))
                         Text("\(money(payment.amount)) · \(payment.date) · \(payment.method)")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
@@ -22,6 +22,7 @@ struct PaymentScreen: View {
                         Button("Receipt") { receiptPayment = payment }
                             .font(.caption)
                     }
+                    .listRowBackground(Color.ledgerSurface)
                     .swipeActions {
                         if payment.voidReason.isEmpty {
                             Button("Void", role: .destructive) {
@@ -29,7 +30,7 @@ struct PaymentScreen: View {
                             }
                         }
                         Button("Edit") { editingPayment = payment; showingEditor = true }
-                            .tint(.blue)
+                            .tint(.ledgerAccent)
                         Button(role: .destructive) {
                             deletingPayment = payment
                         } label: {
@@ -38,6 +39,7 @@ struct PaymentScreen: View {
                     }
                 }
             }
+            .ledgerPage()
             .navigationTitle("Payments")
             .alert("Permanently delete payment?", isPresented: Binding(
                 get: { deletingPayment != nil },
@@ -98,6 +100,7 @@ struct ReceiptView: View {
                 }
                 if !result.isEmpty { Text(result).font(.footnote).foregroundStyle(.secondary) }
             }
+            .ledgerPage()
             .navigationTitle("Official receipt")
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Close") { dismiss() } } }
         }
@@ -147,6 +150,7 @@ struct PaymentEditor: View {
                 TextField("Method *", text: $method)
                 TextField("Reference *", text: $reference)
             }
+            .ledgerPage()
             .navigationTitle(existing == nil ? "Record payment" : "Edit payment")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }

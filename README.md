@@ -12,6 +12,10 @@ This is a Kotlin Multiplatform project targeting Android, iOS.
     Similarly, if you want to edit the Desktop (JVM) specific part, the [jvmMain](./shared/src/jvmMain/kotlin)
     folder is the appropriate location.
 
+### Interface
+
+Android uses Jetpack Compose Material 3 and iOS uses SwiftUI. Both dashboards group the outstanding balance, released funds, and collections in one summary card, with portfolio activity and the collection schedule below. The interface follows the device’s light or dark appearance.
+
 ### Running the apps
 
 Use the run configurations provided by the run widget in your IDE's toolbar. You can also use these commands and options:

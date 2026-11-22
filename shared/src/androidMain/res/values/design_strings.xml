@@ -1,0 +1,11 @@
+<resources>
+    <string name="nav_overview">Overview</string>
+    <string name="nav_clients">Clients</string>
+    <string name="nav_loans">Loans</string>
+    <string name="nav_payments">Payments</string>
+    <string name="nav_settings">Settings</string>
+    <string name="portfolio_activity">Portfolio activity</string>
+    <string name="collection_schedule">Collection schedule</string>
+    <string name="choose_date">Choose %1$s</string>
+    <string name="outstanding_balance">Outstanding balance</string>
+</resources>

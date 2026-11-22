@@ -9,6 +9,14 @@ struct DashboardScreen: View {
     @State private var reportTo = todayIso()
     @State private var reportResult = ""
 
+    private func balanceDetail(_ title: LocalizedStringKey, _ amount: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title).font(.caption).foregroundStyle(Color.ledgerCitron)
+            Text(amount).font(.headline.monospacedDigit())
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
     private var eligibleLoans: [Loan] {
         store.state.loans.filter { ["Released", "Active", "Overdue"].contains($0.status.label) }
     }
@@ -44,29 +52,52 @@ struct DashboardScreen: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Portfolio overview")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                        Text(todayIso())
-                            .font(.caption)
-                            .foregroundStyle(.tertiary)
+                    Text(todayIso())
+                        .font(.subheadline.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Outstanding balance")
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(Color.ledgerCitron)
+                        Text(money(store.state.loans.reduce(0) { $0 + store.viewModel.remainingLoanBalance(loanId: $1.id) }))
+                            .font(.system(.largeTitle, design: .serif))
+                        Divider().overlay(.white.opacity(0.3))
+                        HStack(alignment: .top, spacing: 16) {
+                            balanceDetail("Total released", money(store.state.loans.reduce(0) { $0 + ($1.releaseAmount?.doubleValue ?? 0) }))
+                            balanceDetail("Total collected", money(store.state.payments.filter { $0.voidReason.isEmpty }.reduce(0) { $0 + $1.amount }))
+                        }
                     }
+                    .padding(22)
+                    .foregroundStyle(.white)
+                    .background {
+                        ZStack(alignment: .topTrailing) {
+                            Color.ledgerForest
+                            Canvas { context, size in
+                                for index in 0..<12 {
+                                    let radius = CGFloat(32 + index * 10)
+                                    let rect = CGRect(x: size.width * 1.08 - radius, y: size.height * 0.13 - radius,
+                                                      width: radius * 2, height: radius * 2)
+                                    context.stroke(Path(ellipseIn: rect), with: .color(.ledgerCitron.opacity(0.15)))
+                                }
+                            }
+                        }
+                    }
+                    .clipShape(RoundedRectangle(cornerRadius: 24))
 
-                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                        DashboardMetricCard(title: "Total clients", value: "\(store.state.clients.count)", tint: Color.blue.opacity(0.10))
-                        DashboardMetricCard(title: "Active loans", value: "\(activeLoanCount)", tint: Color.green.opacity(0.10))
-                        DashboardMetricCard(title: "Due today", value: "\(dueLoanCount(from: todayIso(), through: todayIso())) loans", tint: Color.teal.opacity(0.10))
-                        DashboardMetricCard(title: "Due this week", value: "\(dueLoanCount(from: isoDate(daysFromToday: 1), through: isoDate(daysFromToday: 7))) loans", tint: Color.orange.opacity(0.12))
-                        DashboardMetricCard(title: "Overdue loans", value: "\(overdueLoanCount)", tint: Color.red.opacity(0.10))
-                        DashboardMetricCard(title: "Outstanding balance", value: money(store.state.loans.reduce(0) { $0 + store.viewModel.remainingLoanBalance(loanId: $1.id) }), tint: Color.orange.opacity(0.12))
-                        DashboardMetricCard(title: "Total released", value: money(store.state.loans.reduce(0) { $0 + ($1.releaseAmount?.doubleValue ?? 0) }), tint: Color.indigo.opacity(0.10))
-                        DashboardMetricCard(title: "Total collected", value: money(store.state.payments.filter { $0.voidReason.isEmpty }.reduce(0) { $0 + $1.amount }), tint: Color.teal.opacity(0.10))
+                    Text("Portfolio activity").font(.system(.title3, design: .serif))
+                    HStack(spacing: 10) {
+                        DashboardMetricCard(title: "Total clients", value: "\(store.state.clients.count)")
+                        DashboardMetricCard(title: "Active loans", value: "\(activeLoanCount)")
+                    }
+                    Text("Collection schedule").font(.system(.title3, design: .serif))
+                    HStack(spacing: 10) {
+                        DashboardMetricCard(title: "Due today", value: "\(dueLoanCount(from: todayIso(), through: todayIso())) loans")
+                        DashboardMetricCard(title: "Due this week", value: "\(dueLoanCount(from: isoDate(daysFromToday: 1), through: isoDate(daysFromToday: 7))) loans")
                     }
 
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("Overdue loans")
-                            .font(.headline)
+                        Text("Overdue loans · \(overdueLoanCount)")
+                            .font(.system(.title3, design: .serif))
                         let overdue = eligibleLoans.filter { loan in
                             store.viewModel.loanInstallments(loanId: loan.id).contains { $0.isOverdue }
                         }
@@ -92,7 +123,7 @@ struct DashboardScreen: View {
 
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Reports")
-                            .font(.headline)
+                            .font(.system(.title3, design: .serif))
                         Text("Generate a PDF report for the selected date range.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
@@ -102,10 +133,10 @@ struct DashboardScreen: View {
                         .pickerStyle(.menu)
                         if reportType != "Overdue / aging report" {
                             TextField("From (YYYY-MM-DD)", text: $reportFrom)
-                                .textFieldStyle(.roundedBorder)
+                                .textFieldStyle(LedgerFieldStyle())
                         }
                         TextField(reportType == "Overdue / aging report" ? "As of (YYYY-MM-DD)" : "To (YYYY-MM-DD)", text: $reportTo)
-                            .textFieldStyle(.roundedBorder)
+                            .textFieldStyle(LedgerFieldStyle())
                         Button("Generate PDF") {
                             reportResult = store.viewModel.generateReportPdf(reportType: reportType, from: reportFrom, to: reportTo)
                         }
@@ -120,8 +151,8 @@ struct DashboardScreen: View {
                 }
                 .padding(16)
             }
-            .background(Color(uiColor: .systemGroupedBackground))
-            .navigationTitle("Dashboard")
+            .ledgerPage()
+            .navigationTitle("Overview")
         }
     }
 }
@@ -129,7 +160,6 @@ struct DashboardScreen: View {
 private struct DashboardMetricCard: View {
     let title: String
     let value: String
-    let tint: Color
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -137,13 +167,11 @@ private struct DashboardMetricCard: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Text(value)
-                .font(.headline.weight(.bold))
-                .minimumScaleFactor(0.75)
-                .lineLimit(1)
+                .font(.system(.title2, design: .serif))
         }
         .frame(maxWidth: .infinity, minHeight: 72, alignment: .leading)
         .padding(14)
-        .background(tint, in: RoundedRectangle(cornerRadius: 16))
+        .background(Color.ledgerSurface, in: RoundedRectangle(cornerRadius: 16))
         .overlay {
             RoundedRectangle(cornerRadius: 16)
                 .stroke(Color.primary.opacity(0.10), lineWidth: 1)
@@ -155,7 +183,7 @@ private extension View {
     func dashboardCard() -> some View {
         padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(.background, in: RoundedRectangle(cornerRadius: 16))
+            .background(Color.ledgerSurface, in: RoundedRectangle(cornerRadius: 16))
             .overlay {
                 RoundedRectangle(cornerRadius: 16)
                     .stroke(Color.primary.opacity(0.10), lineWidth: 1)
