@@ -66,7 +66,7 @@ struct ClientScreen: View {
                     }
                 }
             }
-            .ledgerPage()
+            .ledgerTabPage()
             .navigationTitle("Clients")
             .searchable(text: $query, isPresented: $searching, prompt: "Search name or contact")
             .alert("Permanently delete client?", isPresented: Binding(

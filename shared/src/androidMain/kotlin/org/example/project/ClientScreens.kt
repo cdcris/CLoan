@@ -11,6 +11,7 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -62,6 +63,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import java.io.File
 import org.example.project.shared.R
@@ -112,6 +114,7 @@ private fun settingsActionIcon(action: String): ImageVector = ImageVector.Builde
 internal fun SettingsManagement(
     onExport: () -> String,
     onImport: (String) -> Boolean,
+    bottomContentPadding: Dp,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -140,7 +143,8 @@ internal fun SettingsManagement(
         pendingImport = content
     }
 
-    Column(modifier.background(MaterialTheme.colorScheme.background).verticalScroll(rememberScrollState()).padding(20.dp)) {
+    Column(modifier.background(MaterialTheme.colorScheme.background).verticalScroll(rememberScrollState())
+        .padding(20.dp).padding(bottom = bottomContentPadding)) {
         Text(stringResource(R.string.nav_settings), style = MaterialTheme.typography.headlineMedium)
         Spacer(Modifier.height(16.dp))
         Text(stringResource(R.string.backup), style = MaterialTheme.typography.titleLarge)
@@ -197,6 +201,7 @@ internal fun ClientManagement(
     onSaveClient: (Client, Int?) -> Unit,
     onToggleClientArchived: (Client) -> Unit,
     onHardDeleteClient: (Int) -> Unit,
+    bottomContentPadding: Dp,
     modifier: Modifier = Modifier,
 ) {
     var query by remember { mutableStateOf("") }
@@ -267,7 +272,11 @@ internal fun ClientManagement(
                 }
             }
         } else {
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.weight(1f)) {
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                contentPadding = PaddingValues(bottom = bottomContentPadding),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
                 items(visibleClients, key = { it.id }) { client ->
                     ClientCard(
                         client = client,

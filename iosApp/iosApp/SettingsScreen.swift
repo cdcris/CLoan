@@ -85,7 +85,7 @@ struct SettingsScreen: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            .ledgerPage()
+            .ledgerTabPage()
             .navigationTitle("Settings")
             .onChange(of: store.state.defaultPenaltyRule.rate) { _, rate in self.rate = String(rate) }
             .onChange(of: store.state.defaultPenaltyRule.mode.label) { _, mode in self.mode = mode }

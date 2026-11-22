@@ -42,7 +42,7 @@ struct PaymentScreen: View {
                     }
                 }
             }
-            .ledgerPage()
+            .ledgerTabPage()
             .navigationTitle("Payments")
             .alert("Permanently delete payment?", isPresented: Binding(
                 get: { deletingPayment != nil },

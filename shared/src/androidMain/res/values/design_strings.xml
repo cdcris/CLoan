@@ -1,4 +1,5 @@
 <resources>
+    <string name="generate_report_pdf">Generate report PDF</string>
     <string name="nav_overview">Overview</string>
     <string name="nav_clients">Clients</string>
     <string name="nav_loans">Loans</string>

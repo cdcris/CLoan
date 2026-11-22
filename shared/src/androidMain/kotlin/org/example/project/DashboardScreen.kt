@@ -39,6 +39,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.example.project.shared.R
@@ -52,6 +53,7 @@ internal fun DashboardManagement(
     onFindClient: () -> Unit,
     onViewLoans: () -> Unit,
     onSettings: () -> Unit,
+    bottomContentPadding: Dp,
     modifier: Modifier = Modifier,
 ) {
     val today = currentDateIso()
@@ -173,11 +175,11 @@ internal fun DashboardManagement(
                     },
                     enabled = datesValid,
                     modifier = Modifier.fillMaxWidth(),
-                ) { Text("Generate report PDF") }
+                ) { Text(stringResource(R.string.generate_report_pdf)) }
                 if (reportResult.isNotBlank()) Text(reportResult, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
             }
         }
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(bottomContentPadding + 24.dp))
     }
 }
 

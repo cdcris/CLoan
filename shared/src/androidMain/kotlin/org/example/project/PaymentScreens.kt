@@ -3,6 +3,7 @@ package org.example.project
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -29,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import org.example.project.shared.R
 
@@ -40,6 +42,7 @@ internal fun PaymentManagement(
     onSavePayment: (Payment, Int?) -> Unit,
     onVoidPayment: (Payment, String) -> Unit,
     onHardDeletePayment: (Int) -> Unit,
+    bottomContentPadding: Dp,
     modifier: Modifier = Modifier,
 ) {
     var showCreate by remember { mutableStateOf(false) }
@@ -91,7 +94,11 @@ internal fun PaymentManagement(
                 }
             }
         } else {
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.weight(1f)) {
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                contentPadding = PaddingValues(bottom = bottomContentPadding),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
                 items(filteredPayments, key = { it.id }) { payment ->
                     val loan = loans.firstOrNull { it.id == payment.loanId }
                     val clientName = clients.firstOrNull { it.id == loan?.clientId }?.name ?: "Unknown client"

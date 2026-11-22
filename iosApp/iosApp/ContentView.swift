@@ -4,6 +4,7 @@ struct ContentView: View {
     @StateObject private var store = AppStore()
     @State private var selection = LedgerTab.overview
     @State private var searchingClients = false
+    @State private var dockHeight: CGFloat = 0
 
     var body: some View {
         TabView(selection: $selection) {
@@ -17,13 +18,15 @@ struct ContentView: View {
             PaymentScreen(store: store).ledgerTab(.payments)
             SettingsScreen(store: store).ledgerTab(.settings)
         }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
+        .environment(\.ledgerDockHeight, dockHeight)
+        .overlay(alignment: .bottom) {
             ViewThatFits(in: .horizontal) {
                 dock(showLabel: true)
                 dock(showLabel: false)
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { dockHeight = $0 }
         }
         .tint(.ledgerAccent)
         .buttonBorderShape(.roundedRectangle(radius: 12))
@@ -42,8 +45,8 @@ struct ContentView: View {
                     }
                     .padding(.horizontal, 8)
                     .frame(minWidth: 46, minHeight: 46)
-                    .foregroundStyle(selected ? Color.white : Color.primary)
-                    .background(selected ? Color.ledgerInk : Color.clear, in: RoundedRectangle(cornerRadius: 15))
+                    .foregroundStyle(.white)
+                    .background(Color.ledgerInk.opacity(selected ? 1 : 0.76), in: RoundedRectangle(cornerRadius: 15))
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -53,8 +56,6 @@ struct ContentView: View {
         }
         .fixedSize(horizontal: true, vertical: false)
         .padding(5)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22))
-        .shadow(color: .black.opacity(0.13), radius: 6, y: 3)
     }
 }
 
@@ -114,7 +115,23 @@ struct LedgerFieldStyle: TextFieldStyle {
     }
 }
 
+extension EnvironmentValues {
+    @Entry var ledgerDockHeight: CGFloat = 0
+}
+
+private struct LedgerTabPage: ViewModifier {
+    @Environment(\.ledgerDockHeight) private var dockHeight
+
+    func body(content: Content) -> some View {
+        content.ledgerPage().contentMargins(.bottom, dockHeight, for: .scrollContent)
+    }
+}
+
 extension View {
+    func ledgerTabPage() -> some View {
+        modifier(LedgerTabPage())
+    }
+
     func ledgerPage() -> some View {
         scrollContentBackground(.hidden)
             .background(Color.ledgerCanvas)

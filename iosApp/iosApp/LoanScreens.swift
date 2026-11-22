@@ -59,7 +59,7 @@ struct LoanScreen: View {
                     }
                 }
             }
-            .ledgerPage()
+            .ledgerTabPage()
             .navigationTitle("Loans")
             .alert("Permanently delete loan?", isPresented: Binding(
                 get: { deletingLoan != nil },
@@ -101,6 +101,7 @@ struct LoanScreen: View {
 }
 
 struct LoanDetailsScreen: View {
+    @Environment(\.ledgerDockHeight) private var dockHeight
     let loanId: Int32
     @ObservedObject var store: AppStore
     @State private var showingPenaltyEditor = false
@@ -171,6 +172,7 @@ struct LoanDetailsScreen: View {
                 .buttonStyle(.borderedProminent)
                 .tint(.ledgerBrown)
                 .padding(.horizontal, 20)
+                .padding(.bottom, dockHeight)
             }
             .alert("Update penalty balance", isPresented: $showingPenaltyEditor) {
                 TextField("Balance *", text: $penaltyValue).keyboardType(.decimalPad)
